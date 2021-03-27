@@ -37,13 +37,14 @@ const styles = StyleSheet.create({
     shadowColor: 'black',
     shadowOffset: {height: 1},
     shadowOpacity: 0.3,
+    paddingHorizontal: 12,
   },
   inner: {
     flex: 1,
   },
   tabContainer: {
     borderRadius: 16,
-    margin: 16,
+    marginHorizontal: 8,
     marginVertical: 8,
     alignSelf: 'center',
     paddingVertical: 8,

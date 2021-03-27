@@ -6,6 +6,9 @@
  */
 
 module.exports = {
+  resolver: {
+    blockList: [/react-native-simple-video-trimmer-master\/.*/],
+  },
   transformer: {
     getTransformOptions: async () => ({
       transform: {
