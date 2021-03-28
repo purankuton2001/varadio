@@ -1,16 +1,13 @@
 import React from 'react';
-import {StyleSheet, View} from 'react-native';
-import HomeTopTab from '../components/HomeTopTab';
+import {StyleSheet, View, ScrollView} from 'react-native';
 import ContentsList from '../components/ContentsList';
-import PlayList from '../components/PlayList ';
-import {ScrollView} from 'react-native';
+import Profile from '../components/Profile';
 
-export default function HomeScreen() {
+export default function ProfileScreen() {
   return (
     <View style={styles.container}>
-      <HomeTopTab />
       <ScrollView>
-        <PlayList />
+        <Profile />
         <ContentsList />
       </ScrollView>
     </View>
