@@ -1,12 +1,11 @@
 import React from 'react';
 import {StyleSheet, View} from 'react-native';
+import CommentList from '../components/CommentList';
 
-import CommentScreen from './src/screens/CommentScreen';
-
-export default function App() {
+export default function CommentScreen() {
   return (
     <View style={styles.container}>
-      <CommentScreen />
+      <CommentList />
     </View>
   );
 }
@@ -14,5 +13,6 @@ export default function App() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: 'white',
   },
 });

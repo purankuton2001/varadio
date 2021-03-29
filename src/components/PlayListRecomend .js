@@ -1,7 +1,7 @@
 import React from 'react';
 import {StyleSheet, View, Text, Image, ScrollView} from 'react-native';
 
-export default function PlayList() {
+export default function PlayListRecomend() {
   return (
     <View style={styles.container}>
       <Text style={styles.title}>おすすめのプレイリスト</Text>
