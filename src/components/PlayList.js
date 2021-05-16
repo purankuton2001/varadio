@@ -1,18 +1,68 @@
+import {useNavigation} from '@react-navigation/native';
 import React from 'react';
-import {StyleSheet, TouchableOpacity, View, Text, Image} from 'react-native';
+import {
+  StyleSheet,
+  TouchableOpacity,
+  View,
+  Text,
+  Image,
+  Linking,
+  Alert,
+} from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 
-export default function PlayList() {
+export default function PlayList(props) {
+  const navigation = useNavigation();
+  const {item, items} = props;
+  function openUrl(url) {
+    Linking.canOpenURL(url).then(supported => {
+      if (supported) {
+        Linking.openURL(url);
+      } else {
+        Alert.alert(
+          'エラー',
+          'このページを開ませんでした',
+          [{text: 'OK', onPress: () => console.log('OK Pressed')}],
+          {cancelable: false},
+        );
+      }
+    });
+  }
+
   return (
     <View style={styles.container}>
-      <Image
-        source={{uri: 'https://reactjs.org/logo-og.png'}}
-        style={styles.image}
-      />
-      <Text style={styles.username}>神様</Text>
-      <Text style={styles.id}>by 神様</Text>
-      <Text style={styles.description}>私は神です。信仰してください</Text>
-      <TouchableOpacity style={styles.play}>
+      <Image source={{uri: item && item.artwork}} style={styles.image} />
+      <Text style={styles.username}>{item && item.title}</Text>
+      <Text style={styles.id}>by {item && item.artist.name} </Text>
+      {item && item.description !== '' && (
+        <View style={styles.description}>
+          <Text>
+            <Text style={styles.descriptionText}>
+              {item && item.description}
+            </Text>
+          </Text>
+        </View>
+      )}
+      {item && item.link !== '' && (
+        <View style={styles.link}>
+          <Icon name="link-variant" size={13} />
+          <TouchableOpacity
+            onPress={() => {
+              openUrl(item.link);
+            }}>
+            <Text
+              style={[styles.description, styles.linkText]}
+              numberOfLines={1}>
+              {item && item.link}
+            </Text>
+          </TouchableOpacity>
+        </View>
+      )}
+      <TouchableOpacity
+        style={styles.play}
+        onPress={() => {
+          navigation.navigate('player', {items});
+        }}>
         <Icon name="play" size={48} color="white" />
       </TouchableOpacity>
     </View>
@@ -39,7 +89,7 @@ const styles = StyleSheet.create({
   id: {
     height: 16,
     color: '#A7A7A7',
-    fontSize: 14,
+    fontSize: 13,
   },
   username: {
     marginBottom: 4,
@@ -48,6 +98,7 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   play: {
+    marginTop: 16,
     width: 72,
     height: 72,
     borderRadius: 36,

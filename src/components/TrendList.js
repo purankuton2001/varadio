@@ -1,12 +1,22 @@
+import {useNavigation} from '@react-navigation/native';
 import React from 'react';
+import {TouchableOpacity} from 'react-native';
 import {StyleSheet, View, Text, Image, ScrollView} from 'react-native';
 
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 
 export default function TrendList() {
+  const navigation = useNavigation();
+  function handlePress(name) {
+    navigation.navigate(name);
+  }
   return (
     <View style={styles.container}>
-      <View style={styles.item}>
+      <TouchableOpacity
+        style={styles.item}
+        onPress={() => {
+          handlePress('PlayList');
+        }}>
         <View style={styles.header}>
           <Text style={styles.title}>声真似集</Text>
           <View style={styles.infoValue}>
@@ -15,12 +25,17 @@ export default function TrendList() {
           </View>
         </View>
         <ScrollView style={styles.itemList} horizontal>
-          <Image
-            source={{uri: 'https://reactjs.org/logo-og.png'}}
-            style={styles.image}
-          />
+          <TouchableOpacity
+            onPress={() => {
+              handlePress('Player');
+            }}>
+            <Image
+              source={{uri: 'https://reactjs.org/logo-og.png'}}
+              style={styles.image}
+            />
+          </TouchableOpacity>
         </ScrollView>
-      </View>
+      </TouchableOpacity>
     </View>
   );
 }

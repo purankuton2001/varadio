@@ -1,0 +1,54 @@
+{
+  "project_info": {
+    "project_number": "56470386968",
+    "project_id": "hitokoto-309511",
+    "storage_bucket": "hitokoto-309511.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:56470386968:android:abb057cce493f24bbc866d",
+        "android_client_info": {
+          "package_name": "com.hitokoto2"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "56470386968-81m8ptr98672aln1cc46bpq01gof0doq.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.hitokoto2",
+            "certificate_hash": "5e8f16062ea3cd2c4a0d547876baa6f38cabf625"
+          }
+        },
+        {
+          "client_id": "56470386968-opilkn4qfh5v4kik5a6udvmn6ugqbot6.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyATFeELKWGxDTN5VFJNvgENc25ls9uoJ8s"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "56470386968-opilkn4qfh5v4kik5a6udvmn6ugqbot6.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "56470386968-i1bsgasvu0tednl4i6afii84qdst1dgm.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "org.reactjs.native.example.hitokoto2"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

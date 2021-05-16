@@ -1,37 +1,61 @@
-import React from 'react';
-import {StyleSheet, View, Text, Image} from 'react-native';
+import React, {useContext} from 'react';
+import {
+  StyleSheet,
+  View,
+  Text,
+  Image,
+  FlatList,
+  TouchableOpacity,
+} from 'react-native';
 
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import {PlayerContext} from '../../App';
+import {dateToString} from '../utils';
 
-export default function ContentsList() {
-  return (
-    <View style={styles.container}>
-      <View style={styles.item}>
-        <Image
-          source={{uri: 'https://reactjs.org/logo-og.png'}}
-          style={styles.image}
-        />
+export default function ContentsList(props) {
+  const {dispatch} = useContext(PlayerContext);
+  const {items, iconPress} = props;
+
+  function renderItem({item, index}) {
+    const dispatchContents = () => {
+      dispatch({type: 'CONTENTSSELECT', items, index});
+    };
+    return (
+      <TouchableOpacity style={styles.item} onPress={dispatchContents}>
+        <Image source={{uri: item.artwork}} style={styles.image} />
         <View style={styles.description}>
-          <Text style={styles.title}>コナン君の声真似</Text>
+          <Text style={styles.title}>{item.title}</Text>
+          <Text style={styles.infoText}>{item.artist.name}</Text>
           <View style={styles.infoContainer}>
-            <Text style={styles.infoText}>山田太郎</Text>
             <View style={styles.infoValue}>
               <Icon name="play" size={16} />
               <Text style={styles.infoText}>3000回</Text>
             </View>
             <View style={styles.infoValue}>
               <Icon name="clock-outline" size={16} />
-              <Text style={styles.infoText}>2020/01/01</Text>
+              <Text style={styles.infoText}>{dateToString(item.date)}</Text>
             </View>
           </View>
         </View>
-        <Icon
-          name="playlist-plus"
-          size={32}
-          style={styles.icon}
-          color="#A7A7A7"
-        />
-      </View>
+        <TouchableOpacity
+          onPress={() => {
+            iconPress(item);
+          }}
+          style={styles.icon}>
+          <Icon name="playlist-plus" size={32} color="#A7A7A7" />
+        </TouchableOpacity>
+      </TouchableOpacity>
+    );
+  }
+  return (
+    <View style={styles.container}>
+      <FlatList
+        scrollEnabled={false}
+        nestedScrollEnabled={true}
+        data={items}
+        renderItem={renderItem}
+        keyExtractor={item => item.id}
+      />
     </View>
   );
 }
@@ -42,11 +66,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 24,
     position: 'relative',
+    paddingBottom: 80,
   },
   item: {
-    borderRadius: 24,
+    borderRadius: 16,
     backgroundColor: 'white',
-    elevation: 8,
+    elevation: 2,
     shadowColor: 'black',
     shadowOffset: {height: 1},
     shadowOpacity: 0.3,
@@ -79,7 +104,7 @@ const styles = StyleSheet.create({
   },
   infoText: {
     color: 'black',
-    fontSize: 14,
+    fontSize: 13,
     height: 16,
     marginRight: 8,
   },

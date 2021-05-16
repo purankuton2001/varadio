@@ -1,9 +1,9 @@
 import React from 'react';
-import {StyleSheet, View, Text, Image} from 'react-native';
+import {StyleSheet, View, Text, Image, ScrollView} from 'react-native';
 
 export default function MessageList() {
   return (
-    <View style={styles.container}>
+    <ScrollView style={styles.container}>
       <View style={styles.item}>
         <Image
           source={{uri: 'https://reactjs.org/logo-og.png'}}
@@ -19,7 +19,7 @@ export default function MessageList() {
           </Text>
         </View>
       </View>
-    </View>
+    </ScrollView>
   );
 }
 

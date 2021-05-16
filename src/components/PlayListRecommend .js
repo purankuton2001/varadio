@@ -1,18 +1,31 @@
 import React from 'react';
-import {StyleSheet, View, Text, Image, ScrollView} from 'react-native';
+import {
+  TouchableOpacity,
+  StyleSheet,
+  View,
+  Text,
+  Image,
+  ScrollView,
+} from 'react-native';
+import {useNavigation} from '@react-navigation/native';
 
-export default function PlayListRecomend() {
+export default function PlayListRecommend() {
+  const navigation = useNavigation();
+  function handlePress() {
+    navigation.navigate('PlayList');
+  }
+
   return (
     <View style={styles.container}>
       <Text style={styles.title}>おすすめのプレイリスト</Text>
       <ScrollView style={styles.itemList} horizontal>
-        <View style={styles.item}>
+        <TouchableOpacity style={styles.item} onPress={handlePress}>
           <Image
             source={{uri: 'https://reactjs.org/logo-og.png'}}
             style={styles.image}
           />
           <Text style={styles.itemTitle}>声真似集</Text>
-        </View>
+        </TouchableOpacity>
       </ScrollView>
     </View>
   );

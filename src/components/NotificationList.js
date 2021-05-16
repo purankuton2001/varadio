@@ -1,9 +1,9 @@
 import React from 'react';
-import {StyleSheet, View, Text, Image} from 'react-native';
+import {StyleSheet, View, Text, Image, ScrollView} from 'react-native';
 
 export default function NotificationList() {
   return (
-    <View style={styles.container}>
+    <ScrollView style={styles.container}>
       <View style={styles.item}>
         <View style={styles.header}>
           <View style={styles.itemList}>
@@ -18,7 +18,7 @@ export default function NotificationList() {
           神様さんがあなたをフォローしました。
         </Text>
       </View>
-    </View>
+    </ScrollView>
   );
 }
 
@@ -51,6 +51,11 @@ const styles = StyleSheet.create({
   itemList: {
     flexDirection: 'row',
     marginBottom: 8,
+  },
+  infoText: {
+    height: 24,
+    fontSize: 18,
+    color: '#6B6B6B',
   },
   image: {
     borderRadius: 12,
