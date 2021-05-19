@@ -7,7 +7,14 @@ import ReserchStackScreen from './ReserchStackScreen';
 import NotificationStackScreen from './NotificationStackScreen';
 import ProfileStackScreen from './ProfileStackScreen';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
-import {View, StyleSheet, TouchableOpacity, Keyboard, Text} from 'react-native';
+import {
+  View,
+  StyleSheet,
+  TouchableOpacity,
+  Keyboard,
+  Text,
+  Platform,
+} from 'react-native';
 import PostButton from '../Icon/PostButton';
 import {BottomSheet, Image} from 'react-native-elements';
 import {PlayerContext} from '../../App';
@@ -20,6 +27,7 @@ import RecordPlayerScreen from './RecordPlayerScreen';
 import firestore from '@react-native-firebase/firestore';
 import auth from '@react-native-firebase/auth';
 import SoundPlayer from 'react-native-sound-player';
+import DocumentPicker from 'react-native-document-picker';
 
 const events = [
   TrackPlayerEvents.PLAYBACK_STATE,
@@ -32,9 +40,11 @@ export default function MainTabScreen(props) {
   const {state, dispatch} = useContext(PlayerContext);
   const {index, items, playerIsVisible, likes} = state;
   const item = items[index - 3];
-  const ImagePicker = require('react-native-image-picker');
   let options = {
-    mediaType: 'video',
+    type: [
+      DocumentPicker.types.audio,
+      Platform.OS === 'ios' ? 'com.apple.quicktime-movie' : 'video/mp4',
+    ],
   };
   const {navigation} = props;
   const [isVisible, setIsVisible] = useState(false);
@@ -250,23 +260,24 @@ export default function MainTabScreen(props) {
         </TouchableOpacity>
         <TouchableOpacity
           style={styles.bottomBotton}
-          onPress={() => {
+          onPress={async () => {
             setIsVisible(false);
-            ImagePicker.launchImageLibrary(options, response => {
+            const response = await DocumentPicker.pick(options);
+            try {
               console.log('Response = ', response);
-              if (response.didCancel) {
-                console.log('User cancelled image picker');
-              } else if (response.error) {
-                console.log('ImagePicker Error: ', response.error);
-              } else if (response.customButton) {
-                console.log(
-                  'User tapped custom button: ',
-                  response.customButton,
-                );
-              } else {
-                navigation.navigate('Trimming', {filename: response.uri});
+              const extension = await response.uri.match(/[^.]+$/);
+              console.log(extension);
+              const isVideo = response.type.indexOf('audio') === -1;
+              navigation.navigate('Trimming', {
+                filename: response.uri,
+                isVideo,
+                extension,
+              });
+            } catch (error) {
+              if (!DocumentPicker.isCancel(error)) {
+                throw error;
               }
-            });
+            }
           }}>
           <Text style={styles.bottomText}>ファイルを選択</Text>
         </TouchableOpacity>

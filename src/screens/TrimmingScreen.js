@@ -9,7 +9,7 @@ const RNFS = require('react-native-fs');
 
 export default function TrimmingScreen(props) {
   const {route, navigation} = props;
-
+  const {extension, isVideo} = route.params;
   const [filename, setFilename] = useState(route.params.filename);
   const [player, setPlayer] = useState(320);
   const [currentTime, setCurrentTime] = useState(0);
@@ -22,7 +22,7 @@ export default function TrimmingScreen(props) {
   const [pause, setPause] = useState(false);
   const cash = `${
     RNFS.TemporaryDirectoryPath
-  }/${new Date().toISOString()}.mp4`.replace(/:/g, '-');
+  }/${new Date().toISOString()}`.replace(/:/g, '-');
   let output;
 
   const handlePress = async () => {
@@ -41,21 +41,35 @@ export default function TrimmingScreen(props) {
           console.log(err.message, err.code);
         });
     }
-
-    output = `${
-      RNFS.CachesDirectoryPath
-    }/${new Date().toISOString()}.m4a`.replace(/:/g, '_');
-    RNFFmpeg.execute(
-      `-ss ${start / 1000} -i ${cash} -to ${
-        end / 1000
-      } -vn -acodec copy ${output}`,
-    )
-      .then(async result => {
-        console.log(`FFmpeg process exited with rc=${result}.`);
-      })
-      .catch(err => {
-        console.log(err.message, err.code);
-      });
+    if (isVideo) {
+      output = `${
+        RNFS.CachesDirectoryPath
+      }/${new Date().toISOString()}.m4a`.replace(/:/g, '_');
+      RNFFmpeg.execute(
+        `-ss ${start / 1000} -i ${cash} -to ${
+          end / 1000
+        } -vn -acodec copy ${output}`,
+      )
+        .then(async result => {
+          console.log(`FFmpeg process exited with rc=${result}.`);
+        })
+        .catch(err => {
+          console.log(err.message, err.code);
+        });
+    } else {
+      output = `${
+        RNFS.CachesDirectoryPath
+      }/${new Date().toISOString()}.m4a`.replace(/:/g, '_');
+      RNFFmpeg.execute(
+        `-ss ${start / 1000} -i ${cash} -to ${end / 1000} ${output}`,
+      )
+        .then(async result => {
+          console.log(`FFmpeg process exited with rc=${result}.`);
+        })
+        .catch(err => {
+          console.log(err.message, err.code);
+        });
+    }
 
     setPause(true);
     setFilename(output);
