@@ -7,14 +7,7 @@ import ReserchStackScreen from './ReserchStackScreen';
 import NotificationStackScreen from './NotificationStackScreen';
 import ProfileStackScreen from './ProfileStackScreen';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
-import {
-  View,
-  StyleSheet,
-  TouchableOpacity,
-  Keyboard,
-  Text,
-  Platform,
-} from 'react-native';
+import {View, StyleSheet, TouchableOpacity, Keyboard, Text} from 'react-native';
 import PostButton from '../Icon/PostButton';
 import {BottomSheet, Image} from 'react-native-elements';
 import {PlayerContext} from '../../App';
@@ -27,7 +20,6 @@ import RecordPlayerScreen from './RecordPlayerScreen';
 import firestore from '@react-native-firebase/firestore';
 import auth from '@react-native-firebase/auth';
 import SoundPlayer from 'react-native-sound-player';
-import DocumentPicker from 'react-native-document-picker';
 
 const events = [
   TrackPlayerEvents.PLAYBACK_STATE,
@@ -40,14 +32,7 @@ export default function MainTabScreen(props) {
   const {state, dispatch} = useContext(PlayerContext);
   const {index, items, playerIsVisible, likes} = state;
   const item = items[index - 3];
-  let options = {
-    type: [
-      DocumentPicker.types.audio,
-      Platform.OS === 'ios' ? 'com.apple.quicktime-movie' : 'video/mp4',
-    ],
-  };
   const {navigation} = props;
-  const [isVisible, setIsVisible] = useState(false);
   const [playerState, setPlayerState] = useState(null);
 
   useTrackPlayerEvents(events, event => {
@@ -62,77 +47,85 @@ export default function MainTabScreen(props) {
   const playing = playerState === STATE_PLAYING;
 
   useEffect(() => {
-    const likeRef = firestore()
-      .collection(`users/${auth().currentUser.uid}/likes`)
-      .doc(item && item.id);
-    const dislikeRef = firestore()
-      .collection(`users/${auth().currentUser.uid}/dislikes`)
-      .doc(item && item.id);
-    switch (likes) {
-      case false:
-        likeRef.delete();
-        dislikeRef.set({
-          isComment: item.isComment,
-          url: item.url,
-          genre: item.genre,
-          title: item.title,
-          artwork: item.artwork,
-          date: item.date,
-          postRange: item.postRange,
-          materialRange: item.materialRange,
-          artist: firestore().collection('users').doc(item.artist.id),
-          tags: item.tags,
-        });
-        SoundPlayer.playSoundFile('dislike', 'mp3');
-        break;
-      case true:
-        dislikeRef.delete();
-        likeRef.set({
-          isComment: item.isComment,
-          url: item.url,
-          genre: item.genre,
-          title: item.title,
-          artwork: item.artwork,
-          date: item.date,
-          postRange: item.postRange,
-          materialRange: item.materialRange,
-          artist: firestore().collection('users').doc(item.artist.id),
-          tags: item.tags,
-        });
-        SoundPlayer.playSoundFile('like', 'mp3');
-        break;
-      case null:
-        dislikeRef.delete();
-        likeRef.delete();
-        break;
+    if (auth().currentUser) {
+      const likeRef = firestore()
+        .collection(`users/${auth().currentUser.uid}/likes`)
+        .doc(item && item.id);
+      const dislikeRef = firestore()
+        .collection(`users/${auth().currentUser.uid}/dislikes`)
+        .doc(item && item.id);
+      switch (likes) {
+        case false:
+          likeRef.delete();
+          dislikeRef.set({
+            duration: item.duration,
+            records: item.records,
+            isComment: item.isComment,
+            url: item.url,
+            genre: item.genre,
+            title: item.title,
+            artwork: item.artwork,
+            date: item.date,
+            postRange: item.postRange,
+            materialRange: item.materialRange,
+            artist: firestore().collection('users').doc(item.artist.id),
+            tags: item.tags,
+          });
+          SoundPlayer.playSoundFile('dislike', 'mp3');
+          break;
+        case true:
+          dislikeRef.delete();
+          likeRef.set({
+            duration: item.duration,
+            records: item.records,
+            isComment: item.isComment,
+            url: item.url,
+            genre: item.genre,
+            title: item.title,
+            artwork: item.artwork,
+            date: item.date,
+            postRange: item.postRange,
+            materialRange: item.materialRange,
+            artist: firestore().collection('users').doc(item.artist.id),
+            tags: item.tags,
+          });
+          SoundPlayer.playSoundFile('like', 'mp3');
+          break;
+        case null:
+          dislikeRef.delete();
+          likeRef.delete();
+          break;
+      }
     }
   }, [likes]);
   useEffect(() => {
-    TrackPlayer.addEventListener('remote-next', () => {
-      dispatch({type: 'SETLIKE', likes: true});
-    });
-    TrackPlayer.addEventListener('remote-previous', () => {
-      dispatch({type: 'SETLIKE', likes: false});
-    });
-    const likeRef = firestore()
-      .collection(`users/${auth().currentUser.uid}/likes`)
-      .doc(item && item.id);
-    const dislikeRef = firestore()
-      .collection(`users/${auth().currentUser.uid}/dislikes`)
-      .doc(item && item.id);
-    likeRef.get().then(like => {
-      dislikeRef.get().then(dislike => {
-        if (like._exists || dislike._exists) {
+    if (auth().currentUser) {
+      TrackPlayer.addEventListener('remote-next', () => {
+        dispatch({type: 'SETLIKE', likes: true});
+      });
+      TrackPlayer.addEventListener('remote-previous', () => {
+        dispatch({type: 'SETLIKE', likes: false});
+      });
+      const likeRef = firestore()
+        .collection(`users/${auth().currentUser.uid}/likes`)
+        .doc(item && item.id);
+      const dislikeRef = firestore()
+        .collection(`users/${auth().currentUser.uid}/dislikes`)
+        .doc(item && item.id);
+      likeRef.get().then(like => {
+        dislikeRef.get().then(dislike => {
           if (like._exists) {
             dispatch({type: 'SETLIKE', likes: true});
           } else {
-            dispatch({type: 'SETLIKE', likes: false});
+            if (dislike._exists) {
+              dispatch({type: 'SETLIKE', likes: false});
+            } else {
+              dispatch({type: 'SETLIKE', likes: null});
+            }
           }
-        } else {
-          dispatch({type: 'SETLIKE', likes: null});
-        }
+        });
       });
-    });
+    }
   }, [item]);
 
   useEffect(() => {
@@ -238,57 +231,12 @@ export default function MainTabScreen(props) {
           <TouchableOpacity
             style={styles.buttonContainer}
             onPress={() => {
-              setIsVisible(true);
+              navigation.navigate('RecordEdit');
             }}>
             <PostButton size={50} />
           </TouchableOpacity>
         </View>
       )}
-      <BottomSheet
-        isVisible={isVisible}
-        // eslint-disable-next-line react-native/no-inline-styles
-        containerStyle={{
-          backgroundColor: 'rgba(0.5, 0.25, 0, 0.2)',
-        }}>
-        <TouchableOpacity
-          style={styles.bottomBotton}
-          onPress={() => {
-            setIsVisible(false);
-            navigation.navigate('RecordCreate');
-          }}>
-          <Text style={styles.bottomText}>録音する</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.bottomBotton}
-          onPress={async () => {
-            setIsVisible(false);
-            const response = await DocumentPicker.pick(options);
-            try {
-              console.log('Response = ', response);
-              const extension = await response.uri.match(/[^.]+$/);
-              console.log(extension);
-              const isVideo = response.type.indexOf('audio') === -1;
-              navigation.navigate('Trimming', {
-                filename: response.uri,
-                isVideo,
-                extension,
-              });
-            } catch (error) {
-              if (!DocumentPicker.isCancel(error)) {
-                throw error;
-              }
-            }
-          }}>
-          <Text style={styles.bottomText}>ファイルを選択</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.bottomBotton}
-          onPress={() => {
-            setIsVisible(false);
-          }}>
-          <Text style={styles.bottomText}>キャンセル</Text>
-        </TouchableOpacity>
-      </BottomSheet>
       <BottomSheet isVisible={playerIsVisible}>
         <RecordPlayerScreen />
       </BottomSheet>

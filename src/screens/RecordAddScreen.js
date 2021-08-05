@@ -15,34 +15,43 @@ import {Input, BottomSheet, Image, Overlay} from 'react-native-elements';
 import firestore from '@react-native-firebase/firestore';
 import auth from '@react-native-firebase/auth';
 import storage from '@react-native-firebase/storage';
-import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 const RNFS = require('react-native-fs');
+import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 
-export default function RecordPostScreen(props) {
-  const {navigation} = props;
+export default function RecordAddScreen(props) {
+  const {navigation, route} = props;
+  const {output, start, end} = route.params;
   const [loading, setLoading] = useState(false);
   const [playLists, setPlayLists] = useState([]);
   const [title, setTitle] = useState('');
   const [checked, setChecked] = useState([]);
   const [genre, setGenre] = useState('');
   const [isVisible, setIsVisible] = useState(false);
+  const [isComment, setIsComment] = useState(false);
   const [playlistIsVisible, setPlaylistIsVisible] = useState(false);
   const [postRange, setPostRange] = useState(0);
-  const [isComment, setIsComment] = useState(false);
   const {editorState, editorDispatch} = useContext(EditorContext);
   const [image, setImage] = useState(
     'gs://hitokoto-309511.appspot.com/sample/image/m_e_others_500.png',
   );
   const postRef = firestore().collection(
-    `users/${auth().currentUser.uid}/posts`,
+    `users/${auth().currentUser.uid}/records`,
   );
-  const playListRef = firestore()
-    .collection(`users/${auth().currentUser.uid}/playLists`)
-    .orderBy('date', 'desc');
+  const postIndex = Date.now().toString();
+  const recordRef = storage()
+    .ref(`users/${auth().currentUser.uid}/records`)
+    .child(`${postIndex}`);
+  const imageRef = storage()
+    .ref(`users/${auth().currentUser.uid}/records`)
+    .child(`${postIndex}`);
 
   function playlistfetch() {
     if (auth().currentUser) {
-      playListRef.get().then(
+      const db = firestore();
+      const ref = db
+        .collection(`users/${auth().currentUser.uid}/playLists`)
+        .orderBy('date', 'desc');
+      ref.get().then(
         snapshot => {
           const userPlayLists = [];
           snapshot.forEach(doc => {
@@ -83,43 +92,88 @@ export default function RecordPostScreen(props) {
   }, []);
   const recordPost = () => {
     const tags = genre.match(/[#＃][Ａ-Ｚａ-ｚA-Za-z一-鿆0-9０-９ぁ-ヶｦ-ﾟー]+/);
-    const postIndex = Date.now().toString();
-    const imageRef = storage()
-      .ref(`users/${auth().currentUser.uid}/artworks`)
-      .child(`${postIndex}`);
     RNFS.readFile(image.uri, 'base64').then(async img => {
-      imageRef.putString(img, 'base64').then(() => {
-        imageRef
-          .getDownloadURL()
-          .then(artwork => {
-            postRef
-              .add({
-                duration: editorState.duration,
-                records: editorState.records,
-                title,
-                genre,
-                artwork,
-                tags: tags ? tags : [],
-                postRange,
-                playLists: checked,
-                isComment,
-                date: new Date(),
-                artist: firestore().doc(`users/${auth().currentUser.uid}`),
-              })
-              .then(() => {
-                navigation.reset({
-                  index: 0,
-                  routes: [{name: 'Main'}],
+      imageRef
+        .putString(img, 'base64')
+        .then(() => {
+          imageRef
+            .getDownloadURL()
+            .then(artwork => {
+              RNFS.readFile(output, 'base64')
+                .then(res => {
+                  recordRef
+                    .putString(res, 'base64')
+                    .then(() => {
+                      recordRef
+                        .getDownloadURL()
+                        .then(url => {
+                          postRef
+                            .add({
+                              url,
+                              title,
+                              genre,
+                              artwork,
+                              isComment,
+                              tags: tags ? tags : [],
+                              postRange,
+                              playLists: checked,
+                              date: new Date(),
+                              artist: firestore().doc(
+                                `users/${auth().currentUser.uid}`,
+                              ),
+                            })
+                            .then(docRef => {
+                              const id = editorState.records.length;
+                              editorDispatch({
+                                type: 'RECORDSADD',
+                                records: {
+                                  id,
+                                  recordId: docRef.id,
+                                  title,
+                                  artwork,
+                                  url,
+                                  rate: 1,
+                                  trimStart: start,
+                                  trimEnd: end,
+                                  start: 0,
+                                  end: end - start,
+                                  volume: 100,
+                                  artist: auth().currentUser.uid,
+                                  storageId: postIndex,
+                                },
+                              });
+                              navigation.reset({
+                                index: 1,
+                                routes: [{name: 'Main'}, {name: 'RecordEdit'}],
+                              });
+                            })
+                            .catch(() => {
+                              Alert.alert('投稿に失敗しました。');
+                            });
+                        })
+                        .catch(() => {
+                          Alert.alert(
+                            'オーディオファイルurl取得に失敗しました。',
+                          );
+                        });
+                    })
+                    .catch(() => {
+                      Alert.alert(
+                        'オーディオファイルのアップロードに失敗しました。',
+                      );
+                    });
+                })
+                .catch(() => {
+                  Alert.alert('オーディオファイルが読み込めません');
                 });
-              })
-              .catch(() => {
-                Alert.alert('投稿に失敗しました。');
-              });
-          })
-          .catch(() => {
-            Alert.alert('画像url取得に失敗しました。');
-          });
-      });
+            })
+            .catch(() => {
+              Alert.alert('画像url取得に失敗しました。');
+            });
+        })
+        .catch(() => {
+          Alert.alert('画像のアップロードに失敗しました。');
+        });
     });
   };
   function handlePress() {
@@ -157,6 +211,8 @@ export default function RecordPostScreen(props) {
   };
 
   const handleImage = () => {
+    let ImagePicker = require('react-native-image-picker');
+
     let options = {
       title: '画像を選択',
       storageOptions: {
@@ -164,7 +220,7 @@ export default function RecordPostScreen(props) {
         path: 'images',
       },
     };
-    let ImagePicker = require('react-native-image-picker');
+
     ImagePicker.launchImageLibrary(options, async response => {
       if (response.didCancel) {
         console.log('User cancelled image picker');
@@ -243,6 +299,7 @@ export default function RecordPostScreen(props) {
           checkedColor="#F2994A"
         />
       </View>
+
       <TouchableOpacity style={styles.Cell} onPress={playlistPress}>
         <Text style={styles.bottomText}>プレイリストに追加</Text>
       </TouchableOpacity>

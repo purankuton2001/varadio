@@ -33,6 +33,8 @@ export default function RecordPlayerScreen(props) {
       case false:
         likeRef.delete();
         dislikeRef.set({
+          duration: item.duration,
+          records: item.records,
           isComment: item.isComment,
           url: item.url,
           genre: item.genre,
@@ -49,6 +51,8 @@ export default function RecordPlayerScreen(props) {
       case true:
         dislikeRef.delete();
         likeRef.set({
+          duration: item.duration,
+          records: item.records,
           isComment: item.isComment,
           url: item.url,
           genre: item.genre,

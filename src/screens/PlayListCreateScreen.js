@@ -12,7 +12,6 @@ import firestore from '@react-native-firebase/firestore';
 import auth from '@react-native-firebase/auth';
 import storage from '@react-native-firebase/storage';
 const RNFS = require('react-native-fs');
-import ImagePicker from 'react-native-image-crop-picker';
 
 export default function PlayListCreateScreen(props) {
   const {navigation} = props;
@@ -31,51 +30,64 @@ export default function PlayListCreateScreen(props) {
   useEffect(() => {
     navigation.setOptions({
       headerRight: () => (
-        <TouchableOpacity style={styles.postBotton} onPress={recordPost}>
+        <TouchableOpacity style={styles.postBotton} onPress={playListPost}>
           <Text style={styles.postText}>保存</Text>
         </TouchableOpacity>
       ),
     });
   });
-  const recordPost = () => {
+  const playListPost = () => {
     const postIndex = Date.now().toString();
     const imageRef = storage()
       .ref(`users/${auth().currentUser.uid}/playListsImage`)
       .child(`${postIndex}`);
-    RNFS.readFile(image, 'base64').then(async img => {
+    RNFS.readFile(image.uri, 'base64').then(async img => {
       imageRef.putString(img, 'base64').then(() => {
         imageRef.getDownloadURL().then(artwork => {
-          ref.add({
-            description,
-            title,
-            artwork,
-            posts: [],
-            link,
-            date: new Date(),
-            postRange,
-            artist: firestore().doc(`users/${auth().currentUser.uid}`),
-          });
-          navigation.reset({
-            index: 0,
-            routes: [{name: 'Main'}],
-          });
+          ref
+            .add({
+              description,
+              title,
+              artwork,
+              posts: [],
+              link,
+              date: new Date(),
+              postRange,
+              artist: firestore().doc(`users/${auth().currentUser.uid}`),
+            })
+            .then(() => {
+              navigation.reset({
+                index: 0,
+                routes: [{name: 'Main'}],
+              });
+            });
         });
       });
     });
   };
   const handleImage = () => {
-    ImagePicker.openPicker({
-      width: 120,
-      height: 120,
-      cropping: true,
-    }).then(img => {
-      setImage(img.path);
+    let options = {
+      title: '画像を選択',
+      storageOptions: {
+        skipBackup: true,
+        path: 'images',
+      },
+    };
+    let ImagePicker = require('react-native-image-picker');
+    ImagePicker.launchImageLibrary(options, async response => {
+      if (response.didCancel) {
+        console.log('User cancelled image picker');
+      } else if (response.error) {
+        console.log('ImagePicker Error: ', response.error);
+      } else {
+        setImage(response);
+      }
     });
   };
   return (
     <ScrollView style={styles.container}>
       <TouchableOpacity onPress={handleImage} style={styles.imageContainer}>
-        <Image source={{uri: image}} style={styles.image} />
+        <Image source={{uri: image.uri}} style={styles.image} />
       </TouchableOpacity>
       <View style={styles.cell}>
         <Text style={styles.cellText}>タイトル</Text>

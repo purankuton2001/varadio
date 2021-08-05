@@ -112,32 +112,36 @@ export default function ProfileScreen(props) {
       const ref = db
         .collection(`users/${auth().currentUser.uid}/posts`)
         .orderBy('date', 'desc');
-      ref.get().then(
+      ref.onSnapshot(
         snapshot => {
           const userposts = [];
           snapshot.forEach(doc => {
             const data = doc.data();
-            data.artist.get().then(artist => {
-              console.log(userposts);
-              userposts.push({
-                id: doc.id,
-                title: data.title,
-                artwork: data.artwork,
-                date: data.date.toDate(),
-                postRange: data.postRange,
-                materialRange: data.materialRange,
-                isComment: data.isComment,
-                genre: data.genre,
-                url: data.url,
-                artist: artist.data(),
-                tags: data.tags,
+            if (data.url) {
+              data.artist.get().then(artist => {
+                console.log(userposts);
+                userposts.push({
+                  id: doc.id,
+                  title: data.title,
+                  artwork: data.artwork,
+                  date: data.date.toDate(),
+                  postRange: data.postRange,
+                  materialRange: data.materialRange,
+                  isComment: data.isComment,
+                  genre: data.genre,
+                  url: data.url,
+                  artist: artist.data(),
+                  tags: data.tags,
+                  records: data.records,
+                });
               });
-            });
+            }
           });
           setPosts(userposts);
           setLoading(false);
         },
-        () => {
+        err => {
+          console.log(err);
           setLoading(false);
           Alert.alert('データの読み込みに失敗しました。');
         },

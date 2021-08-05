@@ -12,6 +12,7 @@ import RecordPlayerScreen from './src/screens/RecordPlayerScreen';
 import RecordCreateScreen from './src/screens/RecordCreateScreen';
 import RecordEditScreen from './src/screens/RecordEditScreen';
 import RecordPostScreen from './src/screens/RecordPostScreen';
+import RecordAddScreen from './src/screens/RecordAddScreen';
 import SignUpScreen from './src/screens/SignUpScreen';
 import SignInScreen from './src/screens/SignInScreen';
 import PasswordScreen from './src/screens/PasswordScreen';
@@ -30,7 +31,15 @@ const InitialPlayerState = {
   index: -1,
   playerIsVisible: false,
 };
+const InitialEditorState = {
+  start: 0,
+  end: 10,
+  currentTime: 0,
+  records: [],
+  duration: 10,
+};
 export const PlayerContext = createContext(InitialPlayerState);
+export const EditorContext = createContext(InitialEditorState);
 
 Orientation.lockToPortrait();
 const firebaseConfig = {
@@ -73,7 +82,9 @@ const itemsUpdate = (items, index) => {
     TrackPlayer.updateOptions(recordOptions);
     const item = [];
     items.forEach(i => {
+      console.log(i.url);
       item.push({
+        duration: i.duration,
         id: i.id,
         title: i.title,
         url: i.url,
@@ -83,8 +94,9 @@ const itemsUpdate = (items, index) => {
         artist: i.artist.name,
       });
     });
-    TrackPlayer.add(item);
-    TrackPlayer.play();
+    TrackPlayer.add(item).then(() => {
+      TrackPlayer.play();
+    });
   });
   return {index, items, item: items[index], playerIsVisible: true};
 };
@@ -102,6 +114,52 @@ const playerReducer = (oldState, action) => {
       return {...oldState, playerIsVisible: !oldState.playerIsVisible};
     case 'SETLIKE':
       return {...oldState, likes: action.likes};
+  }
+};
+const editorReducer = (oldState, action) => {
+  console.log(oldState);
+  console.log(action);
+  switch (action.type) {
+    case 'RANGECHANGE':
+      return {...oldState, displayRange: action.displayRange};
+    case 'TOGGLEPLAY':
+      return {...oldState, playing: !oldState.playing};
+    case 'PAUSE':
+      return {...oldState, playing: false};
+    case 'RECORDSADD':
+      return {
+        ...oldState,
+        duration:
+          action.records.end > oldState.duration
+            ? action.records.end
+            : oldState.duration,
+        records: [...oldState.records, action.records],
+      };
+    case 'URLPOST':
+      oldState.records[action.id].url = action.url;
+      return {
+        oldState,
+      };
+    case 'SEEK':
+      return {...oldState, currentTime: action.value};
+    case 'SEEKSTART':
+      return {...oldState, start: action.value};
+    case 'SEEKEND':
+      return {...oldState, end: action.value};
+    case 'TIMEPASS':
+      return {...oldState, currentTime: oldState.currentTime + 0.1};
+    case 'SEEKRECORDS':
+      oldState.records[action.id].start = action.value;
+      oldState.records[action.id].end =
+        action.value +
+        oldState.records[action.id].trimEnd -
+        oldState.records[action.id].trimStart;
+      return oldState;
+    case 'RECORDSEDIT':
+      return {
+        ...oldState,
+        records: oldState.records.splice(action.index, 1, action.records),
+      };
   }
 };
 export default function App() {
@@ -124,70 +182,77 @@ export default function App() {
     });
   }, []);
   const [state, dispatch] = useReducer(playerReducer, InitialPlayerState);
+  const [editorState, editorDispatch] = useReducer(
+    editorReducer,
+    InitialEditorState,
+  );
   return (
     <PlayerContext.Provider value={{state, dispatch}}>
-      <NavigationContainer>
-        <Stack.Navigator
-          screenOptions={{
-            cardStyleInterpolator: CardStyleInterpolators.forHorizontalIOS,
-          }}>
-          <Stack.Screen
-            name="Main"
-            component={MainTabScreen}
-            getId={({route}) => route && route.params}
-            options={{
-              headerShown: false,
-              cardStyleInterpolator:
-                CardStyleInterpolators.forScaleFromCenterAndroid,
-            }}
-          />
-          <Stack.Screen
-            name="Player"
-            component={RecordPlayerScreen}
-            getId={({route}) => route && route.params}
-            options={{
-              headerShown: false,
-              cardStyleInterpolator: CardStyleInterpolators.forVerticalIOS,
-            }}
-          />
-          <Stack.Screen
-            name="RecordCreate"
-            component={RecordCreateScreen}
-            options={{
-              cardStyleInterpolator: CardStyleInterpolators.forVerticalIOS,
-            }}
-          />
-          <Stack.Screen
-            name="Trimming"
-            component={TrimmingScreen}
-            options={{
-              cardStyleInterpolator: CardStyleInterpolators.forVerticalIOS,
-            }}
-          />
-          <Stack.Screen name="RecordEdit" component={RecordEditScreen} />
-          <Stack.Screen name="RecordPost" component={RecordPostScreen} />
-          <Stack.Screen
-            name="SignUp"
-            component={SignUpScreen}
-            options={{
-              cardStyleInterpolator:
-                CardStyleInterpolators.forScaleFromCenterAndroid,
-            }}
-          />
-          <Stack.Screen
-            name="SignIn"
-            component={SignInScreen}
-            options={{
-              cardStyleInterpolator:
-                CardStyleInterpolators.forScaleFromCenterAndroid,
-            }}
-          />
-          <Stack.Screen name="Password" component={PasswordScreen} />
-          <Stack.Screen name="Done" component={PasswordDoneScreen} />
-          <Stack.Screen name="Setting" component={SettingScreen} />
-          <Stack.Screen name="ProfileEdit" component={ProfileEditScreen} />
-        </Stack.Navigator>
-      </NavigationContainer>
+      <EditorContext.Provider value={{editorState, editorDispatch}}>
+        <NavigationContainer>
+          <Stack.Navigator
+            screenOptions={{
+              cardStyleInterpolator: CardStyleInterpolators.forHorizontalIOS,
+            }}>
+            <Stack.Screen
+              name="Main"
+              component={MainTabScreen}
+              getId={({route}) => route && route.params}
+              options={{
+                headerShown: false,
+                cardStyleInterpolator:
+                  CardStyleInterpolators.forScaleFromCenterAndroid,
+              }}
+            />
+            <Stack.Screen
+              name="Player"
+              component={RecordPlayerScreen}
+              getId={({route}) => route && route.params}
+              options={{
+                headerShown: false,
+                cardStyleInterpolator: CardStyleInterpolators.forVerticalIOS,
+              }}
+            />
+            <Stack.Screen
+              name="RecordCreate"
+              component={RecordCreateScreen}
+              options={{
+                cardStyleInterpolator: CardStyleInterpolators.forVerticalIOS,
+              }}
+            />
+            <Stack.Screen
+              name="Trimming"
+              component={TrimmingScreen}
+              options={{
+                cardStyleInterpolator: CardStyleInterpolators.forVerticalIOS,
+              }}
+            />
+            <Stack.Screen name="RecordEdit" component={RecordEditScreen} />
+            <Stack.Screen name="RecordPost" component={RecordPostScreen} />
+            <Stack.Screen name="RecordAdd" component={RecordAddScreen} />
+            <Stack.Screen
+              name="SignUp"
+              component={SignUpScreen}
+              options={{
+                cardStyleInterpolator:
+                  CardStyleInterpolators.forScaleFromCenterAndroid,
+              }}
+            />
+            <Stack.Screen
+              name="SignIn"
+              component={SignInScreen}
+              options={{
+                cardStyleInterpolator:
+                  CardStyleInterpolators.forScaleFromCenterAndroid,
+              }}
+            />
+            <Stack.Screen name="Password" component={PasswordScreen} />
+            <Stack.Screen name="Done" component={PasswordDoneScreen} />
+            <Stack.Screen name="Setting" component={SettingScreen} />
+            <Stack.Screen name="ProfileEdit" component={ProfileEditScreen} />
+          </Stack.Navigator>
+        </NavigationContainer>
+      </EditorContext.Provider>
     </PlayerContext.Provider>
   );
 }

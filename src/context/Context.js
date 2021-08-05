@@ -170,7 +170,7 @@ export function playerReducer(oldState, action) {
   }
 }
 
-export const PlayerContextProvider = ({child}) => {
+export const PlayerContextProvider = () => {
   useEffect(() => {
     const recordOptions = {
       ratingType: TrackPlayer.RATING_THUMBS_UP_DOWN,
@@ -214,9 +214,4 @@ export const PlayerContextProvider = ({child}) => {
     });
   }, []);
   const [state, dispatch] = useReducer(playerReducer, InitialPlayerState);
-  return (
-    <PlayerContext.Provider value={{state, dispatch}}>
-      {child}
-    </PlayerContext.Provider>
-  );
 };
