@@ -95,7 +95,7 @@ const styles = StyleSheet.create({
     width: 96,
     height: 96,
     marginBottom: 8,
-    borderRadius: 24,
+    borderRadius: 48,
   },
   username: {
     marginVertical: 8,

@@ -1,5 +1,5 @@
 import React from 'react';
-import {StyleSheet, View, ScrollView, Alert} from 'react-native';
+import {StyleSheet, ScrollView, Alert} from 'react-native';
 import {ListItem} from 'react-native-elements';
 import firebase from '@react-native-firebase/app';
 

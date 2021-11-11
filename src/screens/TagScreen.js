@@ -3,7 +3,7 @@ import {StyleSheet, View, ScrollView} from 'react-native';
 import ContentsList from '../components/ContentsList';
 import Tag from '../components/Tag';
 
-export default function ProfileScreen() {
+export default function TagScreen() {
   return (
     <View style={styles.container}>
       <ScrollView>

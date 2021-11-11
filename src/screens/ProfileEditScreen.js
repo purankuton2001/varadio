@@ -36,7 +36,7 @@ export default function RecordPostScreen(props) {
     });
   });
   const recordPost = () => {
-    if (image.indexOf('https') == -1) {
+    if (image.indexOf('https') === -1) {
       const postIndex = Date.now().toString();
       const imageRef = storage()
         .ref(`users/${auth().currentUser.uid}/profileImage`)

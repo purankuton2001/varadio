@@ -3,7 +3,7 @@ import {TouchableOpacity} from 'react-native';
 import {StyleSheet, View, Text, Image} from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 
-export default function CommentList() {
+export default function Related() {
   return (
     <View style={styles.container}>
       <View style={styles.item}>
@@ -36,7 +36,7 @@ export default function CommentList() {
 
 const styles = StyleSheet.create({
   container: {
-    flex: 0.8,
+    flex: 1,
     backgroundColor: 'white',
     elevation: 4,
     shadowColor: 'black',

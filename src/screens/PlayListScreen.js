@@ -1,5 +1,5 @@
 import React, {useState, useEffect} from 'react';
-import {StyleSheet, ScrollView, Alert} from 'react-native';
+import {StyleSheet, ScrollView} from 'react-native';
 import DraggableList from '../components/DraggableList';
 // import ContentsList from '../components/ContentsList';
 import PlayList from '../components/PlayList';
@@ -36,6 +36,7 @@ export default function PlayListScreen(props) {
               url: data.url,
               artist: data.artist,
               tags: data.tags,
+              records: data.records,
             });
             if (i === posts.length - 1) {
               console.log(userposts);

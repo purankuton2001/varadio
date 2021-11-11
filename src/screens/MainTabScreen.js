@@ -20,6 +20,7 @@ import RecordPlayerScreen from './RecordPlayerScreen';
 import firestore from '@react-native-firebase/firestore';
 import auth from '@react-native-firebase/auth';
 import SoundPlayer from 'react-native-sound-player';
+import MiniPlayer from '../components/MiniPlayer';
 
 const events = [
   TrackPlayerEvents.PLAYBACK_STATE,
@@ -34,6 +35,18 @@ export default function MainTabScreen(props) {
   const item = items[index - 3];
   const {navigation} = props;
   const [playerState, setPlayerState] = useState(null);
+
+  const togglePlay = async () => {
+    if (playing) {
+      await TrackPlayer.pause();
+    } else {
+      await TrackPlayer.play();
+    }
+  };
+
+  const press = () => {
+    dispatch({type: 'PLAYERTOGGLEOPEN'});
+  };
 
   useTrackPlayerEvents(events, event => {
     if (event.type === TrackPlayerEvents.PLAYBACK_ERROR) {
@@ -175,59 +188,12 @@ export default function MainTabScreen(props) {
       </Tab.Navigator>
       {!keyboardStatus && (
         <View>
-          <TouchableOpacity
-            style={styles.miniPlayer}
-            onPress={() => {
-              dispatch({type: 'PLAYERTOGGLEOPEN'});
-            }}>
-            <View style={styles.left}>
-              <Image
-                source={{uri: item && item.artwork}}
-                style={styles.image}
-              />
-              <Text style={styles.title}>{item && item.title}</Text>
-            </View>
-            <View style={styles.right}>
-              <TouchableOpacity
-                style={styles.controllerButton}
-                onPress={() => {
-                  likes !== false
-                    ? dispatch({type: 'SETLIKE', likes: false})
-                    : dispatch({type: 'SETLIKE', likes: null});
-                }}>
-                <Icon
-                  name="thumb-down"
-                  size={32}
-                  color={likes === false ? '#F2994A' : '#A7A7A7'}
-                />
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.play}
-                onPress={async () => {
-                  if (playing) {
-                    await TrackPlayer.pause();
-                  } else {
-                    await TrackPlayer.play();
-                  }
-                }}>
-                {!playing && <Icon name="play" size={48} color="#F2994A" />}
-                {playing && <Icon name="pause" size={48} color="#F2994A" />}
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.controllerButton}
-                onPress={() => {
-                  !likes
-                    ? dispatch({type: 'SETLIKE', likes: true})
-                    : dispatch({type: 'SETLIKE', likes: null});
-                }}>
-                <Icon
-                  name="thumb-up"
-                  size={32}
-                  color={!likes ? '#A7A7A7' : '#F2994A'}
-                />
-              </TouchableOpacity>
-            </View>
-          </TouchableOpacity>
+          <MiniPlayer
+            playing={playing}
+            togglePlay={togglePlay}
+            press={press}
+            style={{bottom: 48}}
+          />
           <TouchableOpacity
             style={styles.buttonContainer}
             onPress={() => {
@@ -295,21 +261,6 @@ const styles = StyleSheet.create({
     height: 72,
     marginRight: 8,
   },
-  title: {
-    fontSize: 16,
-    height: 24,
-    fontWeight: 'bold',
-  },
-  left: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  right: {
-    marginRight: 8,
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  play: {marginHorizontal: 8},
   cancel: {
     position: 'absolute',
     zIndex: 8,

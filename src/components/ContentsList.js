@@ -1,4 +1,4 @@
-import React, {useContext} from 'react';
+import React, {useContext, useState} from 'react';
 import {
   StyleSheet,
   View,
@@ -9,12 +9,27 @@ import {
 } from 'react-native';
 
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import AddPlayList from './AddPlayList';
 import {PlayerContext} from '../../App';
 import {dateToString} from '../utils';
+import auth from '@react-native-firebase/auth';
 
 export default function ContentsList(props) {
   const {dispatch} = useContext(PlayerContext);
-  const {items, iconPress} = props;
+  const {items} = props;
+  const [visible, setVisible] = useState(false);
+  const [it, setIt] = useState();
+
+  const changeVisible = st => {
+    setVisible(st);
+  };
+
+  const iconPress = i => {
+    if (auth().currentUser) {
+      setIt(i);
+      setVisible(!visible);
+    }
+  };
 
   function renderItem({item, index}) {
     const dispatchContents = () => {
@@ -40,6 +55,7 @@ export default function ContentsList(props) {
         <TouchableOpacity
           onPress={() => {
             iconPress(item);
+            console.log(it.id);
           }}
           style={styles.icon}>
           <Icon name="playlist-plus" size={32} color="#A7A7A7" />
@@ -50,12 +66,11 @@ export default function ContentsList(props) {
   return (
     <View style={styles.container}>
       <FlatList
-        scrollEnabled={false}
-        nestedScrollEnabled={true}
         data={items}
         renderItem={renderItem}
         keyExtractor={item => item.id}
       />
+      <AddPlayList changeVisible={changeVisible} visible={visible} item={it} />
     </View>
   );
 }
@@ -69,7 +84,7 @@ const styles = StyleSheet.create({
     paddingBottom: 80,
   },
   item: {
-    borderRadius: 16,
+    borderRadius: 40,
     backgroundColor: 'white',
     elevation: 2,
     shadowColor: 'black',
@@ -82,7 +97,7 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
   image: {
-    borderRadius: 16,
+    borderRadius: 36,
     width: 72,
     height: 72,
     marginRight: 16,
@@ -117,5 +132,42 @@ const styles = StyleSheet.create({
     position: 'absolute',
     right: 8,
     top: 8,
+  },
+  overlay: {
+    width: '80%',
+    height: '60%',
+  },
+  bottomBotton: {
+    flexDirection: 'row',
+    backgroundColor: 'white',
+    height: 56,
+    alignItems: 'center',
+  },
+  bottomText: {
+    height: 24,
+    fontSize: 18,
+    justifyContent: 'center',
+    marginLeft: 4,
+  },
+  buttonText: {
+    padding: 8,
+    height: 48,
+    fontSize: 18,
+  },
+  overlayTitle: {
+    padding: 8,
+    height: 48,
+    fontSize: 20,
+    fontWeight: 'bold',
+    backgroundColor: 'white',
+  },
+  button: {
+    alignItems: 'flex-end',
+    marginHorizontal: 32,
+  },
+  buttons: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingRight: 16,
   },
 });

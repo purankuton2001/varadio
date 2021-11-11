@@ -22,6 +22,7 @@ export default function RecordAddScreen(props) {
   const {navigation, route} = props;
   const {output, start, end} = route.params;
   const [loading, setLoading] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [playLists, setPlayLists] = useState([]);
   const [title, setTitle] = useState('');
   const [checked, setChecked] = useState([]);
@@ -43,7 +44,7 @@ export default function RecordAddScreen(props) {
     .child(`${postIndex}`);
   const imageRef = storage()
     .ref(`users/${auth().currentUser.uid}/records`)
-    .child(`${postIndex}`);
+    .child(`${postIndex}_artwork`);
 
   function playlistfetch() {
     if (auth().currentUser) {
@@ -89,92 +90,99 @@ export default function RecordAddScreen(props) {
       ),
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [image, genre, title]);
   const recordPost = () => {
     const tags = genre.match(/[#＃][Ａ-Ｚａ-ｚA-Za-z一-鿆0-9０-９ぁ-ヶｦ-ﾟー]+/);
-    RNFS.readFile(image.uri, 'base64').then(async img => {
-      imageRef
-        .putString(img, 'base64')
-        .then(() => {
-          imageRef
-            .getDownloadURL()
-            .then(artwork => {
-              RNFS.readFile(output, 'base64')
-                .then(res => {
-                  recordRef
-                    .putString(res, 'base64')
-                    .then(() => {
-                      recordRef
-                        .getDownloadURL()
-                        .then(url => {
-                          postRef
-                            .add({
-                              url,
-                              title,
-                              genre,
-                              artwork,
-                              isComment,
-                              tags: tags ? tags : [],
-                              postRange,
-                              playLists: checked,
-                              date: new Date(),
-                              artist: firestore().doc(
-                                `users/${auth().currentUser.uid}`,
-                              ),
-                            })
-                            .then(docRef => {
-                              const id = editorState.records.length;
-                              editorDispatch({
-                                type: 'RECORDSADD',
-                                records: {
-                                  id,
-                                  recordId: docRef.id,
-                                  title,
-                                  artwork,
-                                  url,
-                                  rate: 1,
-                                  trimStart: start,
-                                  trimEnd: end,
-                                  start: 0,
-                                  end: end - start,
-                                  volume: 100,
-                                  artist: auth().currentUser.uid,
-                                  storageId: postIndex,
-                                },
+    if (!uploading) {
+      setUploading(true);
+      RNFS.readFile(image, 'base64').then(async img => {
+        imageRef
+          .putString(img, 'base64')
+          .then(() => {
+            imageRef
+              .getDownloadURL()
+              .then(artwork => {
+                RNFS.readFile(output, 'base64')
+                  .then(res => {
+                    recordRef
+                      .putString(res, 'base64')
+                      .then(() => {
+                        recordRef
+                          .getDownloadURL()
+                          .then(url => {
+                            postRef
+                              .add({
+                                url,
+                                title,
+                                genre,
+                                artwork,
+                                isComment,
+                                tags: tags ? tags : [],
+                                postRange,
+                                playLists: checked,
+                                date: new Date(),
+                                artist: firestore().doc(
+                                  `users/${auth().currentUser.uid}`,
+                                ),
+                              })
+                              .then(docRef => {
+                                const id = editorState.records.length;
+                                editorDispatch({
+                                  type: 'RECORDSADD',
+                                  records: {
+                                    id,
+                                    recordId: docRef.id,
+                                    title,
+                                    artwork,
+                                    url,
+                                    rate: 1,
+                                    trimStart: start,
+                                    trimEnd: end,
+                                    start: 0,
+                                    end: end - start,
+                                    volume: 100,
+                                    artist: auth().currentUser.uid,
+                                    storageId: postIndex,
+                                  },
+                                });
+                                setUploading(false);
+                                navigation.reset({
+                                  index: 1,
+                                  routes: [
+                                    {name: 'Main'},
+                                    {name: 'RecordEdit'},
+                                  ],
+                                });
+                              })
+                              .catch(() => {
+                                Alert.alert('投稿に失敗しました。');
                               });
-                              navigation.reset({
-                                index: 1,
-                                routes: [{name: 'Main'}, {name: 'RecordEdit'}],
-                              });
-                            })
-                            .catch(() => {
-                              Alert.alert('投稿に失敗しました。');
-                            });
-                        })
-                        .catch(() => {
-                          Alert.alert(
-                            'オーディオファイルurl取得に失敗しました。',
-                          );
-                        });
-                    })
-                    .catch(() => {
-                      Alert.alert(
-                        'オーディオファイルのアップロードに失敗しました。',
-                      );
-                    });
-                })
-                .catch(() => {
-                  Alert.alert('オーディオファイルが読み込めません');
-                });
-            })
-            .catch(() => {
-              Alert.alert('画像url取得に失敗しました。');
-            });
-        })
-        .catch(() => {
-          Alert.alert('画像のアップロードに失敗しました。');
-        });
-    });
+                          })
+                          .catch(() => {
+                            Alert.alert(
+                              'オーディオファイルurl取得に失敗しました。',
+                            );
+                          });
+                      })
+                      .catch(() => {
+                        Alert.alert(
+                          'オーディオファイルのアップロードに失敗しました。',
+                        );
+                      });
+                  })
+                  .catch(() => {
+                    Alert.alert('オーディオファイルが読み込めません');
+                  });
+              })
+              .catch(() => {
+                Alert.alert('画像url取得に失敗しました。');
+              });
+          })
+          .catch(() => {
+            Alert.alert('画像のアップロードに失敗しました。');
+          });
+      });
+    }
   };
   function handlePress() {
     setIsVisible(true);
@@ -211,9 +219,9 @@ export default function RecordAddScreen(props) {
   };
 
   const handleImage = () => {
-    let ImagePicker = require('react-native-image-picker');
+    const ImagePicker = require('react-native-image-picker');
 
-    let options = {
+    const options = {
       title: '画像を選択',
       storageOptions: {
         skipBackup: true,
@@ -227,7 +235,8 @@ export default function RecordAddScreen(props) {
       } else if (response.error) {
         console.log('ImagePicker Error: ', response.error);
       } else {
-        setImage(response);
+        setImage(response.uri);
+        console.log(image);
       }
     });
   };
@@ -235,7 +244,7 @@ export default function RecordAddScreen(props) {
   return (
     <ScrollView style={styles.container}>
       <TouchableOpacity onPress={handleImage} style={styles.imageContainer}>
-        <Image source={{uri: image.uri}} style={styles.image} />
+        <Image source={{uri: image}} style={styles.image} />
       </TouchableOpacity>
       <View style={styles.Cell}>
         <Text style={styles.bottomText}>タイトル</Text>
@@ -399,7 +408,7 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     marginVertical: 32,
     overflow: 'hidden',
-    borderRadius: 24,
+    borderRadius: 60,
   },
   tag: {
     height: 24,

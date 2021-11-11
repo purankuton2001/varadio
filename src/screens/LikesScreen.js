@@ -37,7 +37,7 @@ export default function PlayListScreen(props) {
       },
       () => {
         setLoading(false);
-        Alert.alert('メモの読み込みに失敗しました。');
+        Alert.alert('読み込みに失敗しました。');
       },
     );
     return unsubscribe;

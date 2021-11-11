@@ -1,4 +1,4 @@
-import React, {useState, useEffect, useContext} from 'react';
+import React, {useState, useEffect} from 'react';
 import {
   StyleSheet,
   View,
@@ -13,7 +13,6 @@ import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import Video from 'react-native-video';
 import Svg, {Path} from 'react-native-svg';
 // import {RNFFmpeg} from 'react-native-ffmpeg';
-import {EditorContext} from '../../App';
 import {RNFFmpeg} from 'react-native-ffmpeg';
 
 // const RNFS = require('react-native-fs');
@@ -30,7 +29,6 @@ export default function TrimmingScreen(props) {
   const [width, setWidth] = useState(960);
   const [height, setHeight] = useState(180);
   const [pause, setPause] = useState(false);
-  const {editorState, editorDispatch} = useContext(EditorContext);
   const cash = `${
     RNFS.TemporaryDirectoryPath
   }/${new Date().toISOString()}`.replace(/:/g, '-');

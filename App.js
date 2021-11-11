@@ -82,8 +82,8 @@ const itemsUpdate = (items, index) => {
     TrackPlayer.updateOptions(recordOptions);
     const item = [];
     items.forEach(i => {
-      console.log(i.url);
       item.push({
+        playLists: i.playLists,
         duration: i.duration,
         id: i.id,
         title: i.title,
@@ -105,6 +105,8 @@ const playerReducer = (oldState, action) => {
   console.log(oldState);
   console.log(action);
   switch (action.type) {
+    case 'ITEMSUPDATE':
+      return {items: action.data};
     case 'CONTENTSSELECT':
       const k = itemsUpdate(action.items, action.index);
       return k;

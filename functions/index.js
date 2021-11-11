@@ -3,9 +3,10 @@ const functions = require("firebase-functions");
 const serviceAccount = require("./config/service_account.json");
 const path = require("path");
 const os = require("os");
+const ffmpegPath = require("@ffmpeg-installer/ffmpeg").path;
 const ffmpeg = require("fluent-ffmpeg");
-// eslint-disable-next-line camelcase
-const ffmpegInstaller = require("@ffmpeg-installer/ffmpeg");
+ffmpeg.setFfmpegPath(ffmpegPath);
+
 const UUID = require("uuid-v4");
 
 const admin = require("firebase-admin");
@@ -106,128 +107,82 @@ exports.onUsersPostsCreate = functions.firestore
       const userId = context.params.userId;
       const postId = context.params.postId;
       const post = snapshot.data();
+      const {tags, playLists, records} = post;
       const bucketName = "hitokoto-309511.appspot.com";
       const bucket = storage.bucket(bucketName);
-      const {tags, playLists, records} = post;
-      const targetTempFilePath = [];
+      let command = ffmpeg();
+
       records.forEach((record) => {
-        console.log(record);
-        firestore.collection("records").doc(record.recordId)
-            .collection("posts").doc(postId).set(post);
-        const filePath = `users/${record.artist}/records/${record.storageId}`;
+        const filePath =
+         `users/${record.artist}/records/${record.storageId}`;
         const fileName = filePath.split("/").pop();
         const tempFilePath = path.join(os.tmpdir(), fileName);
         const audioFile = bucket.file(filePath);
-
-        const targetTempFileName = `${fileName.replace(/\.[^/.]+$/,
-            "")}_output.mp3`;
-        targetTempFilePath[record.id] =
-              path.join(os.tmpdir(), targetTempFileName);
         audioFile.download({destination: tempFilePath}).then(() => {
-          if (record.id == 0) {
-            ffmpeg()
-                .setFfmpegPath(ffmpegInstaller.path)
-                .input(tempFilePath)
-                .seekInput(record.start)
-                .toFormat("mp3")
-                .output(targetTempFilePath[record.id])
-                .on("error", function(err) {
-                  console.log("An error occurred: " + err.message);
-                })
-                .on("end", function() {
-                  if (record.id == records.length-1) {
-                    const token = UUID();
-                    const targetTranscodedFilePath = `posts/${
-                      targetTempFileName}`;
-                    const targetStorageFilePath = path.join(
-                        path.dirname(targetTranscodedFilePath),
-                        targetTempFileName
-                    );
-                    const downloadURL = `https://firebasestorage.googleapis.com/v0/b/${bucketName}/o/${encodeURIComponent((targetTranscodedFilePath))}?alt=media&token=${token}`;
-                    post.url = downloadURL;
-                    bucket.upload(targetTempFilePath[record.id], {
-                      destination: targetStorageFilePath,
-                      metadata: {
-                        contentType: "audio/mp3",
-                        metadata: {
-                          firebaseStorageDownloadTokens: token,
-                        },
-                      },
-                    }).then(() => {
-                      tags.forEach((tag) => {
-                        firestore.collection("tags").doc(tag)
-                            .collection("posts").doc(postId).set(post);
-                      });
-                      playLists.forEach((playList) => {
-                        firestore.collection("users").doc(userId)
-                            .collection("playLists").doc(playList).update({
-                              posts: admin
-                                  .firestore.FieldValue.arrayUnion(postId),
-                            });
-                      });
-                      firestore.collection("posts").doc(postId).set(post);
-                      firestore
-                          .collection(`users/${userId}/posts`)
-                          .doc(postId)
-                          .set(post);
-                    });
-                  }
-                  console.log("Finished processing");
-                })
-                .run();
+          if (record.id !== records.length -1) {
+            command =
+              command
+                  .addInput(tempFilePath)
+                  .seekInput(record.start)
+                  .toFormat("mp3");
           } else {
-            ffmpeg()
-                .setFfmpegPath(ffmpegInstaller.path)
-                .input(tempFilePath)
+            const targetFilePath =
+            `users/${userId}/posts/${postId}`;
+            const targetFileName = targetFilePath.split("/").pop();
+            const targetTempFileName = `${targetFileName.replace(/\.[^/.]+$/,
+                "")}_output.mp3`;
+            const targetTempFilePath =
+              path.join(os.tmpdir(), targetTempFileName);
+            command
+                .addInput(tempFilePath)
                 .seekInput(record.start)
                 .toFormat("mp3")
-                .input(targetTempFilePath[record.id-1])
-                .setFfmpegPath(ffmpegInstaller.path)
-                .seekInput(0)
-                .output(targetTempFilePath[record.id])
+                .complexFilter(
+                    [`amix=inputs=${records.length}:duration=longest`])
+                .output(targetTempFilePath)
                 .on("error", function(err) {
                   console.log("An error occurred: " + err.message);
                 })
                 .on("end", function() {
-                  if (record.id == records.length-1) {
-                    const token = UUID();
-                    const targetTranscodedFilePath = `posts/${
-                      targetTempFileName}`;
-                    const targetStorageFilePath = path.join(
-                        path.dirname(targetTranscodedFilePath),
-                        targetTempFileName
-                    );
-                    const downloadURL = `https://firebasestorage.googleapis.com/v0/b/${bucketName}/o/
-                ${encodeURIComponent((targetTranscodedFilePath))}
-                ?alt=media&token=${token}`;
-                    post.url = downloadURL;
-                    bucket.upload(targetTempFilePath[record.id], {
-                      destination: targetStorageFilePath,
+                  const token = UUID();
+                  const targetTranscodedFilePath = `posts/${
+                    targetTempFileName}`;
+                  const targetStorageFilePath = path.join(
+                      path.dirname(targetTranscodedFilePath),
+                      targetTempFileName
+                  );
+                  const downloadURL = `https://firebasestorage.googleapis.com/v0/b/${bucketName}/o/${encodeURIComponent((targetTranscodedFilePath))}?alt=media&token=${token}`;
+                  post.url = downloadURL;
+                  bucket.upload(targetTempFilePath, {
+                    destination: targetStorageFilePath,
+                    metadata: {
+                      contentType: "audio/mp3",
                       metadata: {
-                        contentType: "audio/mp3",
-                        metadata: {
-                          firebaseStorageDownloadTokens: token,
-                        },
+                        firebaseStorageDownloadTokens: token,
                       },
-                    }).then(() => {
-                      tags.forEach((tag) => {
-                        firestore.collection("tags").doc(tag)
-                            .collection("posts").doc(postId).set(post);
-                      });
-                      playLists.forEach((playList) => {
-                        firestore.collection("users").doc(userId)
-                            .collection("playLists").doc(playList).update({
-                              posts: admin
-                                  .firestore.FieldValue.arrayUnion(postId),
-                            });
-                      });
-                      firestore.collection("posts").doc(postId).set(post);
-                      firestore
-                          .collection(`users/${userId}/posts`)
-                          .doc(postId)
-                          .set(post);
+                    },
+                  }).then(() => {
+                    tags.forEach((tag) => {
+                      firestore.collection("tags").doc(tag)
+                          .collection("posts").doc(postId).set(post);
                     });
-                  }
+                    playLists.forEach((playList) => {
+                      firestore.collection("users").doc(userId)
+                          .collection("playLists").doc(playList).update({
+                            posts: admin
+                                .firestore.FieldValue.arrayUnion(postId),
+                          });
+                    });
+                    records.forEach((record) => {
+                      firestore.collection("records").doc(record.recordId)
+                          .collection("posts").doc(postId).set(post);
+                    });
+                    firestore.collection("posts").doc(postId).set(post);
+                    firestore
+                        .collection(`users/${userId}/posts`)
+                        .doc(postId)
+                        .set(post);
+                  });
                   console.log("Finished processing");
                 })
                 .run();

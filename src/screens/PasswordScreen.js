@@ -19,6 +19,7 @@ export default function SignUpScreen(props) {
     navigation.setOptions({
       headerRight: () => (
         <TouchableOpacity
+          // eslint-disable-next-line react-native/no-inline-styles
           style={{marginRight: 8}}
           onPress={() => {
             navigation.reset({

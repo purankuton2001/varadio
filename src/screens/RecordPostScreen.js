@@ -80,46 +80,51 @@ export default function RecordPostScreen(props) {
       ),
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [image, genre, title]);
   const recordPost = () => {
     const tags = genre.match(/[#＃][Ａ-Ｚａ-ｚA-Za-z一-鿆0-9０-９ぁ-ヶｦ-ﾟー]+/);
     const postIndex = Date.now().toString();
     const imageRef = storage()
-      .ref(`users/${auth().currentUser.uid}/artworks`)
+      .ref(`users/${auth().currentUser.uid}/posts`)
       .child(`${postIndex}`);
     RNFS.readFile(image.uri, 'base64').then(async img => {
-      imageRef.putString(img, 'base64').then(() => {
-        imageRef
-          .getDownloadURL()
-          .then(artwork => {
-            postRef
-              .add({
-                duration: editorState.duration,
-                records: editorState.records,
-                title,
-                genre,
-                artwork,
-                tags: tags ? tags : [],
-                postRange,
-                playLists: checked,
-                isComment,
-                date: new Date(),
-                artist: firestore().doc(`users/${auth().currentUser.uid}`),
-              })
-              .then(() => {
-                navigation.reset({
-                  index: 0,
-                  routes: [{name: 'Main'}],
+      imageRef
+        .putString(img, 'base64')
+        .then(() => {
+          imageRef
+            .getDownloadURL()
+            .then(artwork => {
+              postRef
+                .add({
+                  duration: editorState.duration,
+                  records: editorState.records,
+                  title,
+                  genre,
+                  artwork,
+                  tags: tags ? tags : [],
+                  postRange,
+                  playLists: checked,
+                  isComment,
+                  date: new Date(),
+                  artist: firestore().doc(`users/${auth().currentUser.uid}`),
+                })
+                .then(() => {
+                  navigation.reset({
+                    index: 0,
+                    routes: [{name: 'Main'}],
+                  });
+                })
+                .catch(() => {
+                  Alert.alert('投稿に失敗しました。');
                 });
-              })
-              .catch(() => {
-                Alert.alert('投稿に失敗しました。');
-              });
-          })
-          .catch(() => {
-            Alert.alert('画像url取得に失敗しました。');
-          });
-      });
+            })
+            .catch(() => {
+              Alert.alert('画像url取得に失敗しました。');
+            });
+        })
+        .catch(() => {
+          Alert.alert('画像アップロードに失敗しました。');
+        });
     });
   };
   function handlePress() {
@@ -172,6 +177,7 @@ export default function RecordPostScreen(props) {
         console.log('ImagePicker Error: ', response.error);
       } else {
         setImage(response);
+        console.log(response);
       }
     });
   };
@@ -342,7 +348,7 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     marginVertical: 32,
     overflow: 'hidden',
-    borderRadius: 24,
+    borderRadius: 60,
   },
   tag: {
     height: 24,

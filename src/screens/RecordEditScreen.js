@@ -387,7 +387,7 @@ export default function RecordEditScreen(props) {
       endPan.flattenOffset();
     },
   });
-  let options = {
+  const options = {
     type: [
       DocumentPicker.types.audio,
       Platform.OS === 'ios' ? 'com.apple.quicktime-movie' : 'video/mp4',

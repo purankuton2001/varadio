@@ -6,7 +6,7 @@ import {PlayerContext} from '../../App';
 import {dateToString} from '../utils';
 import DraggableFlatList from 'react-native-draggable-flatlist';
 
-export default function ContentsList(props) {
+export default function DraggableList(props) {
   const {dispatch} = useContext(PlayerContext);
   const {items, iconPress, dragEnd} = props;
 
@@ -47,6 +47,7 @@ export default function ContentsList(props) {
   return (
     <View style={styles.container}>
       <DraggableFlatList
+        scrollEnabled={false}
         data={items}
         renderItem={renderItem}
         keyExtractor={item => item.id}
@@ -65,7 +66,7 @@ const styles = StyleSheet.create({
     paddingBottom: 80,
   },
   item: {
-    borderRadius: 16,
+    borderRadius: 40,
     backgroundColor: 'white',
     elevation: 2,
     shadowColor: 'black',
@@ -78,7 +79,7 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
   image: {
-    borderRadius: 16,
+    borderRadius: 36,
     width: 72,
     height: 72,
     marginRight: 16,

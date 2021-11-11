@@ -35,45 +35,50 @@ export default function PlayListCreateScreen(props) {
         </TouchableOpacity>
       ),
     });
-  });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [image, description, title]);
   const playListPost = () => {
     const postIndex = Date.now().toString();
     const imageRef = storage()
       .ref(`users/${auth().currentUser.uid}/playListsImage`)
       .child(`${postIndex}`);
-    RNFS.readFile(image.uri, 'base64').then(async img => {
-      imageRef.putString(img, 'base64').then(() => {
-        imageRef.getDownloadURL().then(artwork => {
-          ref
-            .add({
-              description,
-              title,
-              artwork,
-              posts: [],
-              link,
-              date: new Date(),
-              postRange,
-              artist: firestore().doc(`users/${auth().currentUser.uid}`),
-            })
-            .then(() => {
-              navigation.reset({
-                index: 0,
-                routes: [{name: 'Main'}],
+    RNFS.readFile(image.uri, 'base64')
+      .then(async img => {
+        imageRef.putString(img, 'base64').then(() => {
+          imageRef.getDownloadURL().then(artwork => {
+            ref
+              .add({
+                description,
+                title,
+                artwork,
+                posts: [],
+                link,
+                date: new Date(),
+                postRange,
+                artist: firestore().doc(`users/${auth().currentUser.uid}`),
+              })
+              .then(() => {
+                navigation.reset({
+                  index: 0,
+                  routes: [{name: 'Main'}],
+                });
               });
-            });
+          });
         });
+      })
+      .catch(() => {
+        Alert.alert('画像の読み込みに失敗しました。');
       });
-    });
   };
   const handleImage = () => {
-    let options = {
+    const options = {
       title: '画像を選択',
       storageOptions: {
         skipBackup: true,
         path: 'images',
       },
     };
-    let ImagePicker = require('react-native-image-picker');
+    const ImagePicker = require('react-native-image-picker');
     ImagePicker.launchImageLibrary(options, async response => {
       if (response.didCancel) {
         console.log('User cancelled image picker');
@@ -81,6 +86,7 @@ export default function PlayListCreateScreen(props) {
         console.log('ImagePicker Error: ', response.error);
       } else {
         setImage(response);
+        console.log(response);
       }
     });
   };
@@ -140,6 +146,7 @@ export default function PlayListCreateScreen(props) {
       </TouchableOpacity>
       <BottomSheet
         isVisible={isVisible}
+        // eslint-disable-next-line react-native/no-inline-styles
         containerStyle={{
           backgroundColor: 'rgba(0.5, 0.25, 0, 0.2)',
         }}>
@@ -202,7 +209,7 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     marginVertical: 32,
     overflow: 'hidden',
-    borderRadius: 24,
+    borderRadius: 60,
   },
   cell: {
     flexDirection: 'row',

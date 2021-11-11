@@ -1,4 +1,4 @@
-import React from 'react';
+import React, {useContext} from 'react';
 import {
   StyleSheet,
   TouchableOpacity,
@@ -10,10 +10,14 @@ import {
   ScrollView,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import {PlayerContext} from '../../App';
+import {dateToString} from '../utils';
 
-export default function RecordPlayer() {
-  const link = 'https://ja.wikipedia.org/wiki/%E7%A5%9E';
-  function openUrl(url) {
+export default function Description() {
+  const {state, dispatch} = useContext(PlayerContext);
+  const {item} = state;
+
+  const openUrl = url => {
     Linking.canOpenURL(url).then(supported => {
       if (supported) {
         Linking.openURL(url);
@@ -26,23 +30,27 @@ export default function RecordPlayer() {
         );
       }
     });
-  }
+  };
 
   return (
     <View style={styles.container}>
       <View style={styles.profile}>
         <View style={styles.profileTitle}>
-          <Image
-            source={{uri: 'https://reactjs.org/logo-og.png'}}
-            style={styles.profileImage}
-          />
-          <Text style={styles.profileText}>神様</Text>
+          {item && item.artist && (
+            <Image
+              source={{uri: item.artist.profileImage}}
+              style={styles.profileImage}
+            />
+          )}
+          <Text style={styles.profileText}>
+            {item && item.artist && item.artist.name}
+          </Text>
         </View>
         <TouchableOpacity style={styles.button}>
           <Text style={styles.buttonText}>フォロー</Text>
         </TouchableOpacity>
       </View>
-      <Text style={styles.title}>信者必見！初心者の犯しがちなミス8選！？</Text>
+      <Text style={styles.title}>{item && item.title}</Text>
       <View style={styles.infoContainer}>
         <View style={styles.infoValue}>
           <Icon name="play" size={16} />
@@ -54,20 +62,20 @@ export default function RecordPlayer() {
         </View>
         <View style={styles.infoValue}>
           <Icon name="clock-outline" size={14} />
-          <Text style={styles.infoText}>2020/01/01</Text>
+          <Text style={styles.infoText}>{dateToString(item.date)}</Text>
         </View>
       </View>
       <View style={styles.link}>
         <Icon name="link-variant" size={12} />
-        <TouchableOpacity onPress={openUrl(link)}>
-          <Text style={[styles.description, styles.linkText]}>{link}</Text>
+        <TouchableOpacity
+          onPress={() => {
+            openUrl(item.link);
+          }}>
+          <Text style={[styles.description, styles.linkText]}>{item.link}</Text>
         </TouchableOpacity>
       </View>
       <ScrollView style={styles.description}>
-        <Text>
-          #信者初心者　＃信じる者は救われる　神です。
-          信者が犯しがちな3つのミスを紹介しました。
-        </Text>
+        <Text>{item && item.genre}</Text>
       </ScrollView>
     </View>
   );
@@ -75,17 +83,12 @@ export default function RecordPlayer() {
 
 const styles = StyleSheet.create({
   container: {
-    flex: 0.5,
+    flex: 1,
     backgroundColor: 'white',
-    elevation: 4,
-    shadowColor: 'black',
-    shadowOffset: {height: 1},
-    shadowOpacity: 0.3,
     paddingVertical: 24,
     paddingHorizontal: 20,
   },
   profile: {
-    width: '100%',
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
