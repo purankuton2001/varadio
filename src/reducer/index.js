@@ -5,8 +5,8 @@ const itemsUpdate = (items, index) => {
     const recordOptions = {
       ratingType: TrackPlayer.RATING_THUMBS_UP_DOWN,
       stopWithApp: true,
-      previousIcon: require('./src/Icon/dislike_on.png'),
-      nextIcon: require('./src/Icon/dislike_on.png'),
+      previousIcon: require('../Icon/like_on.png'),
+      nextIcon: require('../Icon/dislike_on.png'),
       capabilities: [
         TrackPlayer.CAPABILITY_PLAY,
         TrackPlayer.CAPABILITY_PAUSE,

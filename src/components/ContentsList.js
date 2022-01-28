@@ -7,6 +7,7 @@ import {
   FlatList,
   TouchableOpacity,
 } from 'react-native';
+import analytics from '@react-native-firebase/analytics';
 
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import AddPlayList from './AddPlayList';
@@ -33,7 +34,16 @@ export default function ContentsList(props) {
 
   function renderItem({item, index}) {
     const dispatchContents = () => {
-      dispatch({type: 'CONTENTSSELECT', items, index});
+      const log = {
+        content_type: 'test',
+        item_id: item.id,
+      };
+      console.log(log);
+      analytics()
+        .logSelectContent(log)
+        .then(() => {
+          dispatch({type: 'CONTENTSSELECT', items, index});
+        });
     };
     return (
       <TouchableOpacity style={styles.item} onPress={dispatchContents}>

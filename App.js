@@ -1,4 +1,4 @@
-import React, {createContext, useEffect, useReducer} from 'react';
+import React, {createContext, useEffect, useReducer, useRef} from 'react';
 import {
   createStackNavigator,
   CardStyleInterpolators,
@@ -23,6 +23,7 @@ import TrimmingScreen from './src/screens/TrimmingScreen';
 import SettingScreen from './src/screens/SettingScreen';
 import ProfileEditScreen from './src/screens/ProfileEditScreen';
 import firebase from '@react-native-firebase/app';
+import analytics from '@react-native-firebase/analytics';
 
 const Stack = createStackNavigator();
 
@@ -40,6 +41,7 @@ const InitialEditorState = {
   records: [],
   duration: 10,
 };
+
 export const PlayerContext = createContext(InitialPlayerState);
 export const EditorContext = createContext(InitialEditorState);
 
@@ -72,10 +74,29 @@ export default function App() {
     editorReducer,
     InitialEditorState,
   );
+  const routeNameRef = useRef();
+  const navigationRef = useRef();
   return (
     <PlayerContext.Provider value={{state, dispatch}}>
       <EditorContext.Provider value={{editorState, editorDispatch}}>
-        <NavigationContainer>
+        <NavigationContainer
+          ref={navigationRef}
+          onReady={() => {
+            routeNameRef.current = navigationRef.current.getCurrentRoute().name;
+          }}
+          onStateChange={async () => {
+            const previousRouteName = routeNameRef.current;
+            const currentRouteName =
+              navigationRef.current.getCurrentRoute().name;
+
+            if (previousRouteName !== currentRouteName) {
+              await analytics().logScreenView({
+                screen_name: currentRouteName,
+                screen_class: currentRouteName,
+              });
+            }
+            routeNameRef.current = currentRouteName;
+          }}>
           <Stack.Navigator
             screenOptions={{
               cardStyleInterpolator: CardStyleInterpolators.forHorizontalIOS,
