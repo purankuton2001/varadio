@@ -115,99 +115,6 @@ export default function RecordPlayerScreen(props) {
   const changeTab = value => {
     setTab(value);
   };
-  function renderPlaylists({item}) {
-    return (
-      <View style={styles.bottomBotton}>
-        <CheckBox
-          center
-          value={item ? isCheck(item.id) : false}
-          onValueChange={() => {
-            item ? check(item.id) : null;
-          }}
-          checkedColor="#F2994A"
-        />
-        <Text style={styles.bottomText}>{item && item.title}</Text>
-      </View>
-    );
-  }
-
-  useEffect(() => {
-    const likeRef = firestore()
-      .collection(`users/${auth().currentUser.uid}/likes`)
-      .doc(item && item.id);
-    const dislikeRef = firestore()
-      .collection(`users/${auth().currentUser.uid}/dislikes`)
-      .doc(item && item.id);
-    switch (likes) {
-      case false:
-        likeRef.delete();
-        dislikeRef.set({
-          duration: item.duration,
-          records: item.records,
-          isComment: item.isComment,
-          url: item.url,
-          genre: item.genre,
-          title: item.title,
-          artwork: item.artwork,
-          date: item.date,
-          postRange: item.postRange,
-          materialRange: item.materialRange,
-          artist: firestore().collection('users').doc(item.artist.id),
-          tags: item.tags,
-        });
-        SoundPlayer.playSoundFile('dislike', 'mp3');
-        break;
-      case true:
-        dislikeRef.delete();
-        likeRef.set({
-          duration: item.duration,
-          records: item.records,
-          isComment: item.isComment,
-          url: item.url,
-          genre: item.genre,
-          title: item.title,
-          artwork: item.artwork,
-          date: item.date,
-          postRange: item.postRange,
-          materialRange: item.materialRange,
-          artist: firestore().collection('users').doc(item.artist.id),
-          tags: item.tags,
-        });
-        SoundPlayer.playSoundFile('like', 'mp3');
-        break;
-      case null:
-        dislikeRef.delete();
-        likeRef.delete();
-        break;
-    }
-  }, [likes]);
-  useEffect(() => {
-    TrackPlayer.addEventListener('remote-next', () => {
-      dispatch({type: 'SETLIKE', likes: true});
-    });
-    TrackPlayer.addEventListener('remote-previous', () => {
-      dispatch({type: 'SETLIKE', likes: false});
-    });
-    const likeRef = firestore()
-      .collection(`users/${auth().currentUser.uid}/likes`)
-      .doc(item && item.id);
-    const dislikeRef = firestore()
-      .collection(`users/${auth().currentUser.uid}/dislikes`)
-      .doc(item && item.id);
-    likeRef.get().then(like => {
-      dislikeRef.get().then(dislike => {
-        if (like._exists || dislike._exists) {
-          if (like._exists) {
-            dispatch({type: 'SETLIKE', likes: true});
-          } else {
-            dispatch({type: 'SETLIKE', likes: false});
-          }
-        } else {
-          dispatch({type: 'SETLIKE', likes: null});
-        }
-      });
-    });
-  }, [item]);
 
   useTrackPlayerEvents(events, event => {
     if (event.type === TrackPlayerEvents.PLAYBACK_ERROR) {
@@ -233,7 +140,7 @@ export default function RecordPlayerScreen(props) {
     );
   }
   function renderTag({item}) {
-    return <Text style={styles.tagTitle}>#{item}</Text>;
+    return <Text style={styles.tagTitle}>{item}</Text>;
   }
 
   const togglePlay = async () => {
@@ -314,9 +221,11 @@ export default function RecordPlayerScreen(props) {
       <View style={styles.header}>
         <TouchableOpacity
           onPress={() => {
-            likes !== false
-              ? dispatch({type: 'SETLIKE', likes: false})
-              : dispatch({type: 'SETLIKE', likes: null});
+            if (likes !== false) {
+              dispatch({type: 'SETLIKE', likes: false});
+            } else {
+              dispatch({type: 'SETLIKE', likes: null});
+            }
           }}>
           <Icon
             name="thumb-down"

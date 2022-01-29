@@ -1,44 +1,9 @@
 import TrackPlayer from 'react-native-track-player';
+import analytics from '@react-native-firebase/analytics';
 
 const itemsUpdate = (items, index) => {
   TrackPlayer.reset().then(() => {
-    const recordOptions = {
-      ratingType: TrackPlayer.RATING_THUMBS_UP_DOWN,
-      stopWithApp: true,
-      previousIcon: require('../Icon/like_on.png'),
-      nextIcon: require('../Icon/dislike_on.png'),
-      capabilities: [
-        TrackPlayer.CAPABILITY_PLAY,
-        TrackPlayer.CAPABILITY_PAUSE,
-        TrackPlayer.CAPABILITY_SKIP_TO_NEXT,
-        TrackPlayer.CAPABILITY_SKIP_TO_PREVIOUS,
-      ],
-      notificationCapabilities: [
-        TrackPlayer.CAPABILITY_PLAY,
-        TrackPlayer.CAPABILITY_PAUSE,
-        TrackPlayer.CAPABILITY_SKIP_TO_NEXT,
-        TrackPlayer.CAPABILITY_SKIP_TO_PREVIOUS,
-      ],
-      compactCapabilities: [
-        TrackPlayer.CAPABILITY_PLAY,
-        TrackPlayer.CAPABILITY_PAUSE,
-      ],
-    };
-    TrackPlayer.updateOptions(recordOptions);
-    const item = [];
-    items.forEach(i => {
-      item.push({
-        playLists: i.playLists,
-        duration: i.duration,
-        id: i.id,
-        title: i.title,
-        url: i.url,
-        genre: i.genre,
-        artwork: i.artwork,
-        date: i.date,
-        artist: i.artist.name,
-      });
-    });
+    const item = items.slice(index);
     TrackPlayer.add(item).then(() => {
       TrackPlayer.play();
     });
@@ -53,13 +18,42 @@ export const playerReducer = (oldState, action) => {
     case 'ITEMSUPDATE':
       return {items: action.data};
     case 'CONTENTSSELECT':
+      analytics().logSelectContent({
+        content_type: 'post',
+        item_id: action.items[action.index].id,
+      });
       const k = itemsUpdate(action.items, action.index);
       return k;
     case 'TRACKCHANGE':
+      if (oldState.items[oldState.index + 1]) {
+        const item = {
+          item_id: oldState.items[oldState.index + 1].id,
+        };
+        analytics().logViewItem({items: [item]});
+      }
       return {...oldState, index: oldState.index + 1};
     case 'PLAYERTOGGLEOPEN':
       return {...oldState, playerIsVisible: !oldState.playerIsVisible};
     case 'SETLIKE':
+      function likesTostring(likes) {
+        switch (likes) {
+          case true:
+            return 'true';
+          case false:
+            return 'false';
+          case null:
+            return 'null';
+        }
+      }
+      if (oldState.items[oldState.index]) {
+        const item = {
+          item_id: oldState.items[oldState.index].id,
+          item_brand: likesTostring(action.likes),
+        };
+        analytics().logAddToWishlist({items: [item]});
+      }
+      return {...oldState, likes: action.likes};
+    case 'CHANGELIKE':
       return {...oldState, likes: action.likes};
   }
 };

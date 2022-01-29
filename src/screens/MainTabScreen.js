@@ -30,6 +30,80 @@ const events = [
 const Tab = createBottomTabNavigator();
 
 export default function MainTabScreen(props) {
+  useEffect(() => {
+    const likeRef = firestore()
+      .collection(`users/${auth().currentUser.uid}/likes`)
+      .doc(item && item.id);
+    const dislikeRef = firestore()
+      .collection(`users/${auth().currentUser.uid}/dislikes`)
+      .doc(item && item.id);
+    switch (likes) {
+      case false:
+        likeRef.delete();
+        dislikeRef.set({
+          duration: item.duration,
+          records: item.records,
+          isComment: item.isComment,
+          url: item.url,
+          genre: item.genre,
+          title: item.title,
+          artwork: item.artwork,
+          date: item.date,
+          postRange: item.postRange,
+          materialRange: item.materialRange,
+          artist: firestore().collection('users').doc(item.artist.id),
+          tags: item.tags,
+        });
+        SoundPlayer.playSoundFile('dislike', 'mp3');
+        break;
+      case true:
+        dislikeRef.delete();
+        likeRef.set({
+          duration: item.duration,
+          records: item.records,
+          isComment: item.isComment,
+          url: item.url,
+          genre: item.genre,
+          title: item.title,
+          artwork: item.artwork,
+          date: item.date,
+          postRange: item.postRange,
+          materialRange: item.materialRange,
+          artist: firestore().collection('users').doc(item.artist.id),
+          tags: item.tags,
+        });
+        SoundPlayer.playSoundFile('like', 'mp3');
+        break;
+      case null:
+        dislikeRef.delete();
+        likeRef.delete();
+        break;
+    }
+  }, [likes]);
+  useEffect(() => {
+    if (auth().currentUser) {
+      const likeRef = firestore()
+        .collection(`users/${auth().currentUser.uid}/likes`)
+        .doc(item && item.id);
+      const dislikeRef = firestore()
+        .collection(`users/${auth().currentUser.uid}/dislikes`)
+        .doc(item && item.id);
+      likeRef.get().then(like => {
+        dislikeRef.get().then(dislike => {
+          if (like._exists || dislike._exists) {
+            if (like._exists) {
+              dispatch({type: 'CHANGELIKE', likes: true});
+            } else {
+              dispatch({type: 'CHANGELIKE', likes: false});
+            }
+          } else {
+            dispatch({type: 'CHANGELIKE', likes: null});
+          }
+        });
+      });
+    }
+  }, [item]);
+
   const {state, dispatch} = useContext(PlayerContext);
   const {index, items, playerIsVisible, likes} = state;
   const item = items[index - 3];
@@ -58,88 +132,6 @@ export default function MainTabScreen(props) {
   });
 
   const playing = playerState === STATE_PLAYING;
-
-  useEffect(() => {
-    if (auth().currentUser) {
-      const likeRef = firestore()
-        .collection(`users/${auth().currentUser.uid}/likes`)
-        .doc(item && item.id);
-      const dislikeRef = firestore()
-        .collection(`users/${auth().currentUser.uid}/dislikes`)
-        .doc(item && item.id);
-      switch (likes) {
-        case false:
-          likeRef.delete();
-          dislikeRef.set({
-            duration: item.duration,
-            records: item.records,
-            isComment: item.isComment,
-            url: item.url,
-            genre: item.genre,
-            title: item.title,
-            artwork: item.artwork,
-            date: item.date,
-            postRange: item.postRange,
-            materialRange: item.materialRange,
-            artist: firestore().collection('users').doc(item.artist.id),
-            tags: item.tags,
-          });
-          SoundPlayer.playSoundFile('dislike', 'mp3');
-          break;
-        case true:
-          dislikeRef.delete();
-          likeRef.set({
-            duration: item.duration,
-            records: item.records,
-            isComment: item.isComment,
-            url: item.url,
-            genre: item.genre,
-            title: item.title,
-            artwork: item.artwork,
-            date: item.date,
-            postRange: item.postRange,
-            materialRange: item.materialRange,
-            artist: firestore().collection('users').doc(item.artist.id),
-            tags: item.tags,
-          });
-          SoundPlayer.playSoundFile('like', 'mp3');
-          break;
-        case null:
-          dislikeRef.delete();
-          likeRef.delete();
-          break;
-      }
-    }
-  }, [likes]);
-  useEffect(() => {
-    if (auth().currentUser) {
-      TrackPlayer.addEventListener('remote-next', () => {
-        dispatch({type: 'SETLIKE', likes: true});
-      });
-      TrackPlayer.addEventListener('remote-previous', () => {
-        dispatch({type: 'SETLIKE', likes: false});
-      });
-      const likeRef = firestore()
-        .collection(`users/${auth().currentUser.uid}/likes`)
-        .doc(item && item.id);
-      const dislikeRef = firestore()
-        .collection(`users/${auth().currentUser.uid}/dislikes`)
-        .doc(item && item.id);
-      likeRef.get().then(like => {
-        dislikeRef.get().then(dislike => {
-          if (like._exists) {
-            dispatch({type: 'SETLIKE', likes: true});
-          } else {
-            if (dislike._exists) {
-              dispatch({type: 'SETLIKE', likes: false});
-            } else {
-              dispatch({type: 'SETLIKE', likes: null});
-            }
-          }
-        });
-      });
-    }
-  }, [item]);
 
   useEffect(() => {
     Keyboard.addListener('keyboardDidShow', _keyboardDidShow);

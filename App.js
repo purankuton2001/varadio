@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/exhaustive-deps */
 import React, {createContext, useEffect, useReducer, useRef} from 'react';
 import {
   createStackNavigator,
@@ -8,6 +9,9 @@ import Orientation from 'react-native-orientation';
 import TrackPlayer from 'react-native-track-player';
 import {playerReducer, editorReducer} from './src/reducer';
 import {firebaseConfig} from './src/utils';
+import firestore from '@react-native-firebase/firestore';
+import auth from '@react-native-firebase/auth';
+import SoundPlayer from 'react-native-sound-player';
 
 import MainTabScreen from './src/screens/MainTabScreen';
 import RecordPlayerScreen from './src/screens/RecordPlayerScreen';
@@ -57,6 +61,35 @@ export default function App() {
 
   useEffect(() => {
     TrackPlayer.setupPlayer().then(() => {
+      const recordOptions = {
+        ratingType: TrackPlayer.RATING_THUMBS_UP_DOWN,
+        stopWithApp: true,
+        previousIcon: require('./src/Icon/like_on.png'),
+        nextIcon: require('./src/Icon/dislike_on.png'),
+        capabilities: [
+          TrackPlayer.CAPABILITY_PLAY,
+          TrackPlayer.CAPABILITY_PAUSE,
+          TrackPlayer.CAPABILITY_SKIP_TO_NEXT,
+          TrackPlayer.CAPABILITY_SKIP_TO_PREVIOUS,
+        ],
+        notificationCapabilities: [
+          TrackPlayer.CAPABILITY_PLAY,
+          TrackPlayer.CAPABILITY_PAUSE,
+          TrackPlayer.CAPABILITY_SKIP_TO_NEXT,
+          TrackPlayer.CAPABILITY_SKIP_TO_PREVIOUS,
+        ],
+        compactCapabilities: [
+          TrackPlayer.CAPABILITY_PLAY,
+          TrackPlayer.CAPABILITY_PAUSE,
+        ],
+      };
+      TrackPlayer.updateOptions(recordOptions);
+      TrackPlayer.addEventListener('remote-next', () => {
+        dispatch({type: 'SETLIKE', likes: true});
+      });
+      TrackPlayer.addEventListener('remote-previous', () => {
+        dispatch({type: 'SETLIKE', likes: false});
+      });
       TrackPlayer.addEventListener(
         'playback-track-changed',
         dispatchTrackChange,
@@ -69,7 +102,9 @@ export default function App() {
       });
     });
   }, []);
+
   const [state, dispatch] = useReducer(playerReducer, InitialPlayerState);
+  const {item, likes} = state;
   const [editorState, editorDispatch] = useReducer(
     editorReducer,
     InitialEditorState,
