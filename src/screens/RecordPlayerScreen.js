@@ -1,5 +1,5 @@
-/* eslint-disable react-native/no-inline-styles */
 /* eslint-disable react-hooks/exhaustive-deps */
+/* eslint-disable react-native/no-inline-styles */
 import React, {useState, useContext, useEffect} from 'react';
 import {
   StyleSheet,
@@ -40,7 +40,7 @@ export default function RecordPlayerScreen(props) {
   const [playerState, setPlayerState] = useState(null);
   const {state, dispatch} = useContext(PlayerContext);
   const {index, items, likes} = state;
-  const item = items[index - 3];
+  const item = items[index];
   const [visible, setVisible] = useState(false);
   const [playLists, setPlayLists] = useState();
   const [checked, setChecked] = useState([]);
@@ -127,7 +127,6 @@ export default function RecordPlayerScreen(props) {
 
   const playing = playerState === STATE_PLAYING;
   const {position} = useTrackPlayerProgress(500);
-
   function renderItem({item}) {
     return (
       position > item.start &&

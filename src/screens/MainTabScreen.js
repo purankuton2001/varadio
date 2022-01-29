@@ -30,54 +30,61 @@ const events = [
 const Tab = createBottomTabNavigator();
 
 export default function MainTabScreen(props) {
+  const {state, dispatch} = useContext(PlayerContext);
+  const {index, items, playerIsVisible, likes} = state;
+  const item = items[index];
+  const {navigation} = props;
+  const [playerState, setPlayerState] = useState(null);
   useEffect(() => {
-    const likeRef = firestore()
-      .collection(`users/${auth().currentUser.uid}/likes`)
-      .doc(item && item.id);
-    const dislikeRef = firestore()
-      .collection(`users/${auth().currentUser.uid}/dislikes`)
-      .doc(item && item.id);
-    switch (likes) {
-      case false:
-        likeRef.delete();
-        dislikeRef.set({
-          duration: item.duration,
-          records: item.records,
-          isComment: item.isComment,
-          url: item.url,
-          genre: item.genre,
-          title: item.title,
-          artwork: item.artwork,
-          date: item.date,
-          postRange: item.postRange,
-          materialRange: item.materialRange,
-          artist: firestore().collection('users').doc(item.artist.id),
-          tags: item.tags,
-        });
-        SoundPlayer.playSoundFile('dislike', 'mp3');
-        break;
-      case true:
-        dislikeRef.delete();
-        likeRef.set({
-          duration: item.duration,
-          records: item.records,
-          isComment: item.isComment,
-          url: item.url,
-          genre: item.genre,
-          title: item.title,
-          artwork: item.artwork,
-          date: item.date,
-          postRange: item.postRange,
-          materialRange: item.materialRange,
-          artist: firestore().collection('users').doc(item.artist.id),
-          tags: item.tags,
-        });
-        SoundPlayer.playSoundFile('like', 'mp3');
-        break;
-      case null:
-        dislikeRef.delete();
-        likeRef.delete();
-        break;
+    if (auth().currentUser) {
+      const likeRef = firestore()
+        .collection(`users/${auth().currentUser.uid}/likes`)
+        .doc(item?.id);
+      const dislikeRef = firestore()
+        .collection(`users/${auth().currentUser.uid}/dislikes`)
+        .doc(item?.id);
+      switch (likes) {
+        case false:
+          likeRef.delete();
+          dislikeRef.set({
+            duration: item.duration,
+            records: item.records,
+            isComment: item.isComment,
+            url: item.url,
+            genre: item.genre,
+            title: item.title,
+            artwork: item.artwork,
+            date: item.date,
+            postRange: item.postRange,
+            materialRange: item.materialRange,
+            artist: firestore().collection('users').doc(item.artist.id),
+            tags: item.tags,
+          });
+          SoundPlayer.playSoundFile('dislike', 'mp3');
+          break;
+        case true:
+          dislikeRef.delete();
+          likeRef.set({
+            duration: item.duration,
+            records: item.records,
+            isComment: item.isComment,
+            url: item.url,
+            genre: item.genre,
+            title: item.title,
+            artwork: item.artwork,
+            date: item.date,
+            postRange: item.postRange,
+            materialRange: item.materialRange,
+            artist: firestore().collection('users').doc(item.artist.id),
+            tags: item.tags,
+          });
+          SoundPlayer.playSoundFile('like', 'mp3');
+          break;
+        case null:
+          dislikeRef.delete();
+          likeRef.delete();
+          break;
+      }
     }
   }, [likes]);
   useEffect(() => {
@@ -103,12 +110,6 @@ export default function MainTabScreen(props) {
       });
     }
   }, [item]);
-
-  const {state, dispatch} = useContext(PlayerContext);
-  const {index, items, playerIsVisible, likes} = state;
-  const item = items[index - 3];
-  const {navigation} = props;
-  const [playerState, setPlayerState] = useState(null);
 
   const togglePlay = async () => {
     if (playing) {

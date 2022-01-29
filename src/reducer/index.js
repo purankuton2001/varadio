@@ -8,9 +8,14 @@ const itemsUpdate = (items, index) => {
       TrackPlayer.play();
     });
   });
-  return {index, items, item: items[index], playerIsVisible: true};
+  return {
+    index,
+    items,
+    playerIsVisible: true,
+    first: true,
+  };
 };
-
+let interval = false;
 export const playerReducer = (oldState, action) => {
   console.log(oldState);
   console.log(action);
@@ -25,13 +30,26 @@ export const playerReducer = (oldState, action) => {
       const k = itemsUpdate(action.items, action.index);
       return k;
     case 'TRACKCHANGE':
-      if (oldState.items[oldState.index + 1]) {
-        const item = {
-          item_id: oldState.items[oldState.index + 1].id,
-        };
-        analytics().logViewItem({items: [item]});
+      if (interval) {
+        return oldState;
+      } else {
+        if (oldState.items[oldState.index + 1]) {
+          const item = {
+            item_id: oldState.items[oldState.index + 1].id,
+          };
+          analytics().logViewItem({items: [item]});
+        }
+        interval = true;
+        setTimeout(() => {
+          interval = false;
+        }, 500);
+        if (oldState.first) {
+          oldState.first = false;
+          return oldState;
+        } else {
+          return {...oldState, index: oldState.index + 1};
+        }
       }
-      return {...oldState, index: oldState.index + 1};
     case 'PLAYERTOGGLEOPEN':
       return {...oldState, playerIsVisible: !oldState.playerIsVisible};
     case 'SETLIKE':

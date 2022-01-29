@@ -34,7 +34,6 @@ const Stack = createStackNavigator();
 const InitialPlayerState = {
   likes: null,
   items: [],
-  item: {},
   index: -1,
   playerIsVisible: false,
 };

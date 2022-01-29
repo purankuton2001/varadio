@@ -74,7 +74,7 @@ export default function RecordAddScreen(props) {
         },
         () => {
           setLoading(false);
-          Alert.alert('メモの読み込みに失敗しました。');
+          Alert.alert('プレイリストの読み込みに失敗しました。');
         },
       );
     }
@@ -154,8 +154,9 @@ export default function RecordAddScreen(props) {
                                   ],
                                 });
                               })
-                              .catch(() => {
+                              .catch(e => {
                                 Alert.alert('投稿に失敗しました。');
+                                console.error(e);
                               });
                           })
                           .catch(() => {
