@@ -9,9 +9,8 @@ import Orientation from 'react-native-orientation';
 import TrackPlayer from 'react-native-track-player';
 import {playerReducer, editorReducer} from './src/reducer';
 import {firebaseConfig} from './src/utils';
-import firestore from '@react-native-firebase/firestore';
 import auth from '@react-native-firebase/auth';
-import SoundPlayer from 'react-native-sound-player';
+import {Alert} from 'react-native';
 
 import MainTabScreen from './src/screens/MainTabScreen';
 import RecordPlayerScreen from './src/screens/RecordPlayerScreen';
@@ -27,7 +26,9 @@ import TrimmingScreen from './src/screens/TrimmingScreen';
 import SettingScreen from './src/screens/SettingScreen';
 import ProfileEditScreen from './src/screens/ProfileEditScreen';
 import firebase from '@react-native-firebase/app';
+import firestore from '@react-native-firebase/firestore';
 import analytics from '@react-native-firebase/analytics';
+import messaging from '@react-native-firebase/messaging';
 
 const Stack = createStackNavigator();
 
@@ -54,12 +55,81 @@ if (firebase.apps.length === 0) {
 }
 
 export default function App() {
+  useEffect(() => {
+    // Assume a message-notification contains a "type" property in the data payload of the screen to open
+
+    messaging().onNotificationOpenedApp(remoteMessage => {
+      console.log(
+        'Notification caused app to open from background state:',
+        remoteMessage.notification,
+      );
+    });
+
+    // Check whether an initial notification is available
+    messaging()
+      .getInitialNotification()
+      .then(remoteMessage => {
+        if (remoteMessage) {
+          console.log(
+            'Notification caused app to open from quit state:',
+            remoteMessage.notification,
+          );
+        }
+      });
+  }, []);
+  useEffect(() => {
+    const unsubscribe = messaging().onMessage(async remoteMessage => {
+      Alert.alert('A new FCM message arrived!', JSON.stringify(remoteMessage));
+    });
+
+    return unsubscribe;
+  }, []);
+
   const dispatchTrackChange = () => {
     dispatch({type: 'TRACKCHANGE'});
   };
 
+  async function init() {
+    const enabled = await messaging().hasPermission();
+    if (enabled) {
+      this.initFcm();
+    } else {
+      try {
+        await messaging().requestPermission();
+        this.initFcm();
+      } catch (e) {
+        console.log(e);
+      }
+    }
+  }
   useEffect(() => {
+    init();
+  }, []);
+  useEffect(() => {
+    const unsubscribe = auth().onAuthStateChanged(user => {
+      if (user) {
+        analytics().setUserId(auth().currentUser.uid);
+      }
+      return unsubscribe;
+    });
+  }, []);
+
+  useEffect(() => {
+    const recfunc = () => {
+      const rec_ref = firestore().collection(
+        `users/${auth().currentUser.uid}/recommends`,
+      );
+      rec_ref.get().then(recs => {
+        dispatch({type: 'RECOMMENDS', items: recs});
+      });
+    };
     TrackPlayer.setupPlayer().then(() => {
+      const rec_ref = auth().currentUser
+        ? firestore().collection(`users/${auth().currentUser.uid}/recommends`)
+        : firestore().collection('rankings');
+      rec_ref.get().then(recs => {
+        dispatch({type: 'RECOMMENDS', items: recs});
+      });
       const recordOptions = {
         ratingType: TrackPlayer.RATING_THUMBS_UP_DOWN,
         stopWithApp: true,
@@ -145,7 +215,7 @@ export default function App() {
                   CardStyleInterpolators.forScaleFromCenterAndroid,
               }}
             />
-            <Stack.Screen
+            {/* <Stack.Screen
               name="Player"
               component={RecordPlayerScreen}
               getId={({route}) => route && route.params}
@@ -153,7 +223,7 @@ export default function App() {
                 headerShown: false,
                 cardStyleInterpolator: CardStyleInterpolators.forVerticalIOS,
               }}
-            />
+            /> */}
             <Stack.Screen
               name="RecordCreate"
               component={RecordCreateScreen}

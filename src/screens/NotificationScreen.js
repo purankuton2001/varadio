@@ -19,15 +19,5 @@ export default function NotificationScreen(props) {
     });
     return unsubscribe;
   });
-  return (
-    <Tab.Navigator
-      tabBarOptions={{
-        indicatorStyle: {backgroundColor: '#F2994A'},
-        activeTintColor: '#F2994A',
-        inactiveTintColor: '#A7A7A7',
-      }}>
-      <Tab.Screen name="Notification" component={NotificationList} />
-      <Tab.Screen name="Message" component={MessageList} />
-    </Tab.Navigator>
-  );
+  return <NotificationList />;
 }

@@ -22,9 +22,7 @@ export default function RecordPostScreen(props) {
   const [location, setLocation] = useState(profile.location);
   const [link, setLink] = useState(profile.link);
   const [image, setImage] = useState(profile.profileImage);
-  const ref = firestore()
-    .collection(`users/${auth().currentUser.uid}/meta`)
-    .doc('profile');
+  const ref = firestore().doc(`users/${auth().currentUser.uid}`);
 
   useEffect(() => {
     navigation.setOptions({

@@ -22,6 +22,9 @@ export const playerReducer = (oldState, action) => {
   switch (action.type) {
     case 'ITEMSUPDATE':
       return {items: action.data};
+    case 'RECOMMENDS':
+      const r = itemsUpdate(action.items, 0);
+      return r;
     case 'CONTENTSSELECT':
       analytics().logSelectContent({
         content_type: 'post',

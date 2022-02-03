@@ -80,9 +80,8 @@ export default function SignUpScreen(props) {
       const errMsg = translateError(error.code);
       Alert.alert(errMsg.title, errMsg.description);
     });
-    const googleCredential = firebase.auth.GoogleAuthProvider.credential(
-      idToken,
-    );
+    const googleCredential =
+      firebase.auth.GoogleAuthProvider.credential(idToken);
     return firebase
       .auth()
       .signInWithCredential(googleCredential)

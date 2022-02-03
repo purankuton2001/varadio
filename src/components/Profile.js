@@ -65,7 +65,7 @@ export default function Profile(props) {
           </Text>
         </View>
       )}
-      {profile && profile.link !== '' && (
+      {profile?.link !== '' && (
         <View style={styles.link}>
           <Icon name="link-variant" size={13} />
           <TouchableOpacity
