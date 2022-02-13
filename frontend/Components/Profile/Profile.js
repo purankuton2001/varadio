@@ -41,7 +41,7 @@ const Profile = ({ navigation }) => {
             borderColor: "#00F",
           }}
           onPress={logoutUser}
-          loadingProps={{ animating: true }}></Button>
+          loadingProps={{ animating: true }}><Text>Logout</Text></Button>
       </View>
     </View>
   );
