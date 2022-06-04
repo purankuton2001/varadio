@@ -2,6 +2,7 @@
 /* eslint-disable new-cap */
 const functions = require("firebase-functions");
 const serviceAccount = require("./config/service_account.json");
+const moralisSetting = require("./config/moralisSetting.json");
 const path = require("path");
 const os = require("os");
 const ffmpegPath = require("@ffmpeg-installer/ffmpeg").path;
@@ -16,9 +17,9 @@ const client = algoliasearch(ALGOLIA_ID, ALGOLIA_ADMIN_KEY);
 const UUID = require("uuid-v4");
 
 const Moralis = require("moralis/node");
-const serverUrl ="https://ddb0jtowzik9.usemoralis.com:2053/server";
-const appId = "PDP4ImPSjTjyRufcSgNNVreBmZ5m7Bqw0BKdxMHV";
-Moralis.start({serverUrl, appId});
+
+
+Moralis.start(moralisSetting);
 const admin = require("firebase-admin");
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount),
