@@ -7,15 +7,17 @@ import {
   ScrollView,
 } from 'react-native';
 
-export default function HomeTopTab() {
+export default function HomeTopTab({tab, changeTab}) {
   return (
     <View style={styles.container}>
       <ScrollView style={styles.inner} horizontal={true}>
-        <TouchableOpacity style={[styles.tabContainer, styles.select]}>
-          <Text style={[styles.tabText, styles.select]}>おすすめ</Text>
+        <TouchableOpacity style={tab !== 'recommend' ? styles.tabContainer:[styles.tabContainer, styles.select]}
+                          onPress={() => {changeTab('recommend')}}>
+          <Text style={tab !== 'recommend' ? styles.tabText:[styles.tabText, styles.selectText]}>おすすめ</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.tabContainer}>
-          <Text style={styles.tabText}>フォロー中</Text>
+        <TouchableOpacity style={tab !== 'following' ? styles.tabContainer:[styles.tabContainer, styles.select]}
+                          onPress={() => {changeTab('following')}}>
+          <Text style={tab !== 'following' ? styles.tabText:[styles.tabText, styles.selectText]}>フォロー中</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.tabContainer}>
           <Text style={styles.tabText}>神様</Text>
@@ -56,8 +58,10 @@ const styles = StyleSheet.create({
     height: 24,
     color: 'black',
   },
-  select: {
+  selectText: {
     color: 'white',
+  },
+  select: {
     backgroundColor: '#F2994A',
   },
 });

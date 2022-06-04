@@ -1,14 +1,66 @@
-import React, {useContext, useState, useEffect, useRef} from 'react';
-import {TouchableOpacity} from 'react-native';
+import React, {useContext, useState, useEffect, useCallback} from 'react';
+import {Alert, TouchableOpacity} from 'react-native';
 import {StyleSheet, View, Text, Image, FlatList, Keyboard} from 'react-native';
-import { Input } from 'react-native-elements';
+import {Input} from 'react-native-elements';
 import PostButton from '../Icon/PostButton';
-import { PlayerContext } from '../../App';
-import firestore from '@react-native-firebase/firestore'
-import auth from '@react-native-firebase/auth'
+import {PlayerContext} from '../../App';
+import firestore from '@react-native-firebase/firestore';
+import auth from '@react-native-firebase/auth';
 import {dateToString} from '../utils';
 
 export default function CommentListScreen() {
+  const {state, dispatch} = useContext(PlayerContext);
+  const {items, index, pressNotification} = state;
+  const post = items[index];
+  const [reply, setReply] = useState(false);
+  const [comment, setComment] = useState('');
+  const [commentsList, setCommentsList] = useState('');
+
+  useEffect(() => {
+    const unsubscribe = firestore()
+      .collection(`posts/${post.id}/comment`)
+      .onSnapshot(
+        comments => {
+          const postComments = [];
+          if (comments.empty) setCommentsList(postComments);
+          comments.forEach((com, index) => {
+            console.log(index);
+            const data = com.data();
+            data.createdBy.get().then(doc => {
+              const createdBy = doc.data();
+              postComments.push({
+                ...data,
+                id: com.id,
+                createdBy,
+                createdAt: data.createdAt.toDate(),
+              });
+              if (index === comments.size - 1) {
+                if (pressNotification) {
+                  const pressIndex = pressNotification.replyId
+                    ? postComments.findIndex(
+                        el => el.id === pressNotification.replyId,
+                      )
+                    : postComments.indexOf(pressNotification);
+                  postComments.splice(pressIndex, 1);
+                  postComments.splice(0, 0, pressNotification);
+                  setCommentsList(postComments);
+                  setNotificationReply(pressNotification.replyId);
+                } else {
+                  setCommentsList(postComments);
+                  console.log('done');
+                  console.log(postComments);
+                }
+              }
+            });
+          });
+        },
+        () => {
+          Alert.alert('コメントのダウンロードに失敗しました。');
+        },
+      );
+    return unsubscribe;
+  }, [post, pressNotification]);
+
   let textInput;
   useEffect(() => {
     Keyboard.addListener('keyboardDidShow', _keyboardDidShow);
@@ -21,41 +73,42 @@ export default function CommentListScreen() {
     };
   }, []);
 
+  const [notificationReply, setNotificationReply] = useState(null);
   const [keyboardStatus, setKeyboardStatus] = useState(undefined);
   const [firstTouch, setFirstTouch] = useState(undefined);
   const _keyboardDidShow = () => {
     setFirstTouch(true);
-    setKeyboardStatus(true)};
+    setKeyboardStatus(true);
+  };
   const _keyboardDidHide = () => setKeyboardStatus(false);
 
   const replyPress = item => {
     setReply(item);
     textInput.focus();
-    setComment("");
-  }
+    setComment('');
+  };
   function replyItem({item}) {
     return (
-        <View style={styles.replyItem}>
-          <Image
-            source={{uri: item?.createdBy.profileImage}}
-            style={styles.image}
-          />
-          <View style={styles.right}>
-            <View style={styles.header}>
-              <Text style={styles.username}>{item?.createdBy.name}</Text>
-            </View>
-            <View style={styles.center}>
-              <Text style={styles.description}>
-                <Text>{item?.comment}</Text>
-              </Text>
-              <View style = {styles.bottom}>
-                <Text style={styles.info}>{dateToString(item?.createdAt)}</Text>
-              </View>
-            </View>
-            <View>
+      <View style={styles.replyItem}>
+        <Image
+          source={{uri: item?.createdBy.profileImage}}
+          style={styles.image}
+        />
+        <View style={styles.right}>
+          <View style={styles.header}>
+            <Text style={styles.username}>{item?.createdBy.name}</Text>
+          </View>
+          <View style={styles.center}>
+            <Text style={styles.description}>
+              <Text>{item?.comment}</Text>
+            </Text>
+            <View style={styles.bottom}>
+              <Text style={styles.info}>{dateToString(item?.createdAt)}</Text>
             </View>
           </View>
+          <View></View>
         </View>
+      </View>
     );
   }
   function CommentItem({item}) {
@@ -63,44 +116,59 @@ export default function CommentListScreen() {
     const [replyItems, setReplyItems] = useState([]);
     const [replyArray, setReplyArray] = useState([]);
     const [replyValue, setReplyValue] = useState(0);
-    const replyRef = firestore()
-    .collection(`posts/${post.id}/comment/${item.id}/reply`);
+    const replyRef = firestore().collection(
+      `posts/${post.id}/comment/${item.id}/reply`,
+    );
     let count = 0;
+    useEffect(() => {}, [replyPress]);
 
     useEffect(() => {
-      const unsubscribe =
-      replyRef
-      .onSnapshot(replys => {
+      const unsubscribe = replyRef.onSnapshot(replys => {
         setReplyValue(replys.size);
         const array = [];
-        replys.forEach((rep) => {
+        replys.forEach(rep => {
           const data = rep.data();
-          data.createdBy.get().then((doc) => {
+          data.createdBy.get().then(doc => {
             const createdBy = doc.data();
-            array.push({...data, createdAt: data.createdAt.toDate(), createdBy});
+            array.push({
+              ...data,
+              createdAt: data.createdAt.toDate(),
+              createdBy,
+            });
             setReplyArray(array);
           });
-        })
+        });
       });
       return unsubscribe;
     }, [item]);
     const replyDetail = () => {
-      if(replyAll)
-      {count = 0;
+      if (replyAll) {
+        count = 0;
         setReplyItems([]);
-       setReplyAll(false);
-      }
-      else {
+        setReplyAll(false);
+      } else {
         count++;
-        if(replyArray.length > 5*count){
-          setReplyItems(replyArray.slice(0, 5*count));
-        }
-        else{
+        if (replyArray.length > 5 * count) {
+          setReplyItems(replyArray.slice(0, 5 * count));
+        } else {
           setReplyItems(replyArray);
           setReplyAll(true);
         }
       }
-    }
+    };
+    const replyButton = useCallback(() => {
+      return (
+        replyValue !== 0 && (
+          <TouchableOpacity
+            onPress={replyDetail}
+            style={{left: replyItems.length > 0 ? 132 : 84}}>
+            <Text style={styles.rateValue}>
+              返信を{replyAll ? '隠す' : '見る'}({replyValue})
+            </Text>
+          </TouchableOpacity>
+        )
+      );
+    }, [replyValue, replyAll, replyItems]);
     return (
       <View style={styles.itemContainer}>
         <View style={styles.item}>
@@ -116,15 +184,17 @@ export default function CommentListScreen() {
               <Text style={styles.description}>
                 <Text>{item?.comment}</Text>
               </Text>
-              <View style = {styles.bottom}>
+              <View style={styles.bottom}>
                 <Text style={styles.info}>{dateToString(item?.createdAt)}</Text>
-                <TouchableOpacity onPress={() => {replyPress(item)}}>
+                <TouchableOpacity
+                  onPress={() => {
+                    replyPress(item);
+                  }}>
                   <Text style={styles.reply}>返信</Text>
                 </TouchableOpacity>
               </View>
             </View>
-            <View>
-            </View>
+            <View></View>
           </View>
         </View>
         <FlatList
@@ -132,78 +202,62 @@ export default function CommentListScreen() {
           listKey={item => item.id}
           renderItem={replyItem}
         />
-        {replyValue !== 0 &&
-        <TouchableOpacity onPress={replyDetail} style={{left: replyItems.length > 0 ? 132: 84}}>
-          <Text style={styles.rateValue}>返信を{replyAll?"隠す":"見る"}({replyValue})</Text>
-        </TouchableOpacity>}
+        {replyButton()}
       </View>
     );
   }
 
-  useEffect(() => {
-    const unsubscribe = firestore().collection(`posts/${post.id}/comment`)
-    .onSnapshot(comments => {
-      const postComments = [];
-      comments.forEach((com) => {
-        const data = com.data();
-        data.createdBy.get().then(doc => {
-          const createdBy = doc.data();
-          postComments.push({...data, id:com.id, createdBy, createdAt: data.createdAt.toDate()});
-          console.log(commentsList);
-          setCommentsList(postComments);
-        })
-      });
-    });
-    return unsubscribe;
-  },[post]);
-  const {state} = useContext(PlayerContext);
-  const {items, index} = state;
-  const post = items[index];
-  const [reply, setReply] = useState(false);
-  const [comment, setComment] = useState("");
-  const [commentsList, setCommentsList] = useState("");
-
   const emmitPress = () => {
-    if(auth().currentUser)
-    {
+    if (auth().currentUser) {
       firestore()
-      .collection(`users/${auth().currentUser.uid}/comments`)
-      .add({
+        .collection(`users/${auth().currentUser.uid}/comments`)
+        .add({
+          to: reply ? reply.createdBy : post.artist,
           itemId: post.id,
           createdAt: new Date(),
-          replyId: reply? reply.id : null,
+          replyId: reply ? reply.id : null,
           createdBy: firestore().doc(`users/${auth().currentUser.uid}`),
           comment,
-          })
-      setComment("");
+        });
+      setComment('');
       setReply(false);
     }
-  }
+  };
   return (
     <View style={styles.container}>
       <FlatList
-       data={commentsList}
-       renderItem={({item}) => <CommentItem item={item} />}
-       listKey={item => item.id}
-       keyExtractor={item => item.id}
-       />
+        data={commentsList}
+        renderItem={useCallback(
+          ({item}) => (
+            <CommentItem item={item} />
+          ),
+          [post],
+        )}
+        listKey={useCallback(item => item.id, [post])}
+        keyExtractor={useCallback(item => item.id, [post])}
+      />
       <View style={[styles.input, {bottom: firstTouch ? 316 : 68}]}>
         <Input
-           ref={input => {textInput = input}}
-           placeholder={reply? reply.createdBy.name + "にひとこと" : "何かひとこと!"}
-           value={comment}
-           containerStyle={styles.inputContainer}
-           onChangeText={text => {
-             if(firstTouch) setFirstTouch(false);
-             setComment(text);}}/>
+          ref={input => {
+            textInput = input;
+          }}
+          placeholder={
+            reply ? reply.createdBy.name + 'にひとこと' : '何かひとこと!'
+          }
+          value={comment}
+          containerStyle={styles.inputContainer}
+          onChangeText={text => {
+            if (firstTouch) setFirstTouch(false);
+            setComment(text);
+          }}
+        />
         <TouchableOpacity style={styles.emmit} onPress={emmitPress}>
-          <PostButton size={40} color='#FFA800' />
+          <PostButton size={40} color="#FFA800" />
         </TouchableOpacity>
       </View>
     </View>
   );
 }
-
 
 const styles = StyleSheet.create({
   container: {
@@ -216,7 +270,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     position: 'relative',
   },
-  input:{
+  input: {
     elevation: 4,
     shadowColor: 'black',
     shadowOffset: {height: 1},
@@ -226,7 +280,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     width: '100%',
   },
-  inputContainer:{
+  inputContainer: {
     width: '100%',
   },
   emmit: {
@@ -250,7 +304,7 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     borderBottomColor: '#A7A7A7',
     borderBottomWidth: 0.5,
-    },
+  },
   item: {
     flexDirection: 'row',
     width: '100%',

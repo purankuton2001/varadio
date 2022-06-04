@@ -16,9 +16,23 @@ import firestore from '@react-native-firebase/firestore';
 import auth from '@react-native-firebase/auth';
 import storage from '@react-native-firebase/storage';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import {useValidation} from 'react-native-form-validator';
 const RNFS = require('react-native-fs');
+import {useMoralis, useWeb3Transfer} from 'react-moralis';
+import {useMoralisDapp} from '../../providers/MoralisDappProvider/MoralisDappProvider';
+import {useWalletConnect} from '../../WalletConnect';
 
 export default function RecordPostScreen(props) {
+  const {
+    Moralis,
+    authenticate,
+    authError,
+    isAuthenticating,
+    user,
+    isAuthenticated,
+    web3,
+  } = useMoralis();
+  const connector = useWalletConnect();
   const {navigation} = props;
   const [loading, setLoading] = useState(false);
   const [playLists, setPlayLists] = useState([]);
@@ -30,9 +44,25 @@ export default function RecordPostScreen(props) {
   const [postRange, setPostRange] = useState(0);
   const [isComment, setIsComment] = useState(false);
   const {editorState, editorDispatch} = useContext(EditorContext);
-  const [image, setImage] = useState(
-    'gs://hitokoto-309511.appspot.com/sample/image/m_e_others_500.png',
-  );
+  const [image, setImage] = useState('');
+  const {marketAddress} = useMoralisDapp();
+  const listItemFunction = 'ItemPost';
+  const {
+    validate,
+    isFieldInError,
+    isFormValid,
+    getErrorsInField,
+    getErrorMessages,
+  } = useValidation({
+    state: {
+      title,
+      genre,
+      image,
+      isComment,
+      playLists,
+      postRange,
+    },
+  });
   const postRef = firestore().collection(
     `users/${auth().currentUser.uid}/posts`,
   );
@@ -69,25 +99,52 @@ export default function RecordPostScreen(props) {
       );
     }
   }
-
   useEffect(() => {
     playlistfetch();
     navigation.setOptions({
       headerRight: () => (
-        <TouchableOpacity style={styles.postBotton} onPress={recordPost}>
+        <TouchableOpacity style={styles.postBotton} onPress={validateForm}>
           <Text style={styles.postText}>投稿</Text>
         </TouchableOpacity>
       ),
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [image, genre, title]);
-  const recordPost = () => {
+  }, [image, genre, title, playLists, postRange]);
+  const validateForm = async () => {
+    await validate({
+      title: {minlength: 3, maxlength: 7, required: true},
+      image: {required: true},
+    });
+    console.log(isFormValid());
+    if (isFormValid()) recordPost();
+  };
+
+  const recordPost = async () => {
+    const tokenIds = [];
+    editorState.records.forEach(r => {
+      tokenIds.push(Number(r.tokenId));
+    });
+    console.log(editorState.records);
     const tags = genre.match(/[#＃][Ａ-Ｚａ-ｚA-Za-z一-鿆0-9０-９ぁ-ヶｦ-ﾟー]+/);
     const postIndex = Date.now().toString();
     const imageRef = storage()
       .ref(`users/${auth().currentUser.uid}/posts`)
       .child(`${postIndex}`);
-    RNFS.readFile(image.uri, 'base64').then(async img => {
+    const data = web3.eth.abi.encodeFunctionCall(
+      {
+        name: listItemFunction,
+        type: 'function',
+        inputs: [{type: 'uint256[]', name: 'tokenIds'}],
+      },
+      [tokenIds],
+    );
+    transactionId = await connector.sendTransaction({
+      data,
+      from: connector.accounts[0],
+      to: marketAddress,
+      value: 'rinkeby',
+    });
+    RNFS.readFile(image, 'base64').then(async img => {
       imageRef
         .putString(img, 'base64')
         .then(() => {
@@ -96,10 +153,14 @@ export default function RecordPostScreen(props) {
             .then(artwork => {
               postRef
                 .add({
-                  duration: editorState.duration,
-                  records: editorState.records,
+                  viewedAmount: Number(0),
+                  duration: editorState?.duration,
+                  records: editorState?.records,
                   title,
-                  genre: genre.replace(/[#＃][Ａ-Ｚａ-ｚA-Za-z一-鿆0-9０-９ぁ-ヶｦ-ﾟー]+/, ''),
+                  genre: genre.replace(
+                    /[#＃][Ａ-Ｚａ-ｚA-Za-z一-鿆0-9０-９ぁ-ヶｦ-ﾟー]+/,
+                    '',
+                  ),
                   artwork,
                   tags: tags ? tags : [],
                   postRange,
@@ -107,8 +168,10 @@ export default function RecordPostScreen(props) {
                   isComment,
                   date: new Date(),
                   artist: firestore().doc(`users/${auth().currentUser.uid}`),
+                  transactionId,
                 })
                 .then(() => {
+                  editorDispatch({type: 'RECORDRESET'});
                   navigation.reset({
                     index: 0,
                     routes: [{name: 'Main'}],
@@ -118,7 +181,8 @@ export default function RecordPostScreen(props) {
                   Alert.alert('投稿に失敗しました。');
                 });
             })
-            .catch(() => {
+            .catch((error) => {
+              console.log(error);
               Alert.alert('画像url取得に失敗しました。');
             });
         })
@@ -176,7 +240,7 @@ export default function RecordPostScreen(props) {
       } else if (response.error) {
         console.log('ImagePicker Error: ', response.error);
       } else {
-        setImage(response);
+        setImage(response.uri);
         console.log(response);
       }
     });
@@ -185,8 +249,24 @@ export default function RecordPostScreen(props) {
   return (
     <ScrollView style={styles.container}>
       <TouchableOpacity onPress={handleImage} style={styles.imageContainer}>
-        <Image source={{uri: image.uri}} style={styles.image} />
+        <Image
+          source={{
+            uri:
+              image !== ''
+                ? image
+                : 'https://firebasestorage.googleapis.com/v0/b/hitokoto-309511.appspot.com/o/samples%2F%E3%82%A2%E3%82%BB%E3%83%83%E3%83%88%201.png?alt=media&token=81a705de-c176-4964-90d3-294f01f65707',
+          }}
+          style={
+            image ? styles.image : {width: 96, height: 96, left: 4, top: 4}
+          }
+        />
       </TouchableOpacity>
+      {isFieldInError('image') &&
+        getErrorsInField('image').map(errorMessage => (
+          <Text style={{color: 'red', alignSelf: 'center', marginBottom: 32}}>
+            {errorMessage}
+          </Text>
+        ))}
       <View style={styles.Cell}>
         <Text style={styles.bottomText}>タイトル</Text>
         <Input
@@ -198,6 +278,10 @@ export default function RecordPostScreen(props) {
           }}
         />
       </View>
+      {isFieldInError('title') &&
+        getErrorsInField('title').map(errorMessage => (
+          <Text style={{left: 104, color: 'red'}}>{errorMessage}</Text>
+        ))}
       <View style={styles.descriptionContainer}>
         <Text style={styles.bottomText}>説明</Text>
         <Input
@@ -343,10 +427,14 @@ const styles = StyleSheet.create({
     height: 120,
   },
   imageContainer: {
+    borderWidth: 0.5,
+    borderColor: '#F2994A',
+    alignItems: 'center',
+    justifyContent: 'center',
     width: 120,
     height: 120,
     alignSelf: 'center',
-    marginVertical: 32,
+    marginTop: 32,
     overflow: 'hidden',
     borderRadius: 60,
   },

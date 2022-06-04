@@ -1,8 +1,9 @@
-import React from 'react';
+import React, {useContext, useEffect} from 'react';
 import {
   createStackNavigator,
   CardStyleInterpolators,
 } from '@react-navigation/stack';
+import {PlayerContext} from '../../App';
 import FollowScreen from './FollowScreen';
 import ProfileScreen from './ProfileScreen';
 import PlayListScreen from './PlayListScreen';
@@ -13,11 +14,21 @@ import ViewedScreen from './ViewedScreen';
 import PlayListCreateScreen from './PlayListCreateScreen';
 import NoAccountScreen from './NoAccountScreen';
 import TagScreen from './TagScreen';
+import { useNavigation } from '@react-navigation/native';
 
 
 const Stack = createStackNavigator();
 
 export default function ProfileStackScreen() {
+  const navigation = useNavigation();
+  const {state, dispatch} = useContext(PlayerContext);
+  const {pressNotificationFollow} = state;
+  useEffect(() => {
+    if(pressNotificationFollow){
+    navigation.navigate('profile', {id: pressNotificationFollow});
+    }
+  }, [pressNotificationFollow])
+
   return (
     <Stack.Navigator
       screenOptions={{

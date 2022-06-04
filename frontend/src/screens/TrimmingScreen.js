@@ -12,10 +12,8 @@ import RNFS from 'react-native-fs';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import Video from 'react-native-video';
 import Svg, {Path} from 'react-native-svg';
-// import {RNFFmpeg} from 'react-native-ffmpeg';
 import {RNFFmpeg} from 'react-native-ffmpeg';
 
-// const RNFS = require('react-native-fs');
 
 export default function TrimmingScreen(props) {
   const {route, navigation} = props;
@@ -102,6 +100,7 @@ export default function TrimmingScreen(props) {
     onPanResponderRelease: () => {
       currentTimePan.flattenOffset();
       console.log(scrollWidth);
+      player?.seek(currentTime);
     },
   });
 
@@ -290,6 +289,8 @@ export default function TrimmingScreen(props) {
         `-ss ${start} -i ${cash} -to ${end} -vn -acodec copy ${output}`,
       )
         .then(async result => {
+          console.log(start);
+          console.log(end);
           console.log(`FFmpeg process exited with rc=${result}.`);
           navigation.navigate('RecordAdd', {output, start, end});
         })
@@ -321,7 +322,7 @@ export default function TrimmingScreen(props) {
         </TouchableOpacity>
       ),
     });
-  });
+  }, [start, end]);
   return (
     <View style={styles.container}>
       <View style={styles.display}>
@@ -337,6 +338,10 @@ export default function TrimmingScreen(props) {
           {pause && <Icon name="play" size={48} color="white" />}
           {!pause && <Icon name="pause" size={48} color="white" />}
         </TouchableOpacity>
+        {!isVideo &&
+          <Icon name="record-circle" color='#FFA800' size={windowWidth -32}
+          style={{marginTop: 48}}/>
+        }
         <Video
           source={{uri: filename}}
           ref={ref => {
@@ -344,7 +349,7 @@ export default function TrimmingScreen(props) {
           }}
           paused={pause}
           onProgress={data => {
-            if (data.currentTime > end - 3) {
+            if (data.currentTime > end - 1.5) {
               player.seek(start);
             }
             setCurrentTime(data.currentTime);
@@ -355,8 +360,8 @@ export default function TrimmingScreen(props) {
               setIsDuration(false);
               setEnd(data.duration > 30 ? 30 : data.duration);
             }
-            setWidth(data.naturalSize.width);
-            setHeight(data.naturalSize.height);
+            setWidth(windowWidth);
+            if(data.naturalSize.height) setHeight(windowWidth * data.naturalSize.height/data.naturalSize.width);
           }}
           // eslint-disable-next-line react-native/no-inline-styles
           style={{
@@ -439,7 +444,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     height: '80%',
     width: '100%',
-    justifyContent: 'center',
   },
   rangeSider: {
     position: 'relative',

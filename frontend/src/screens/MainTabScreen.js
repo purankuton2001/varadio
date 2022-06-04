@@ -19,8 +19,10 @@ import TrackPlayer, {
 import RecordPlayerScreen from './RecordPlayerScreen';
 import firestore from '@react-native-firebase/firestore';
 import auth from '@react-native-firebase/auth';
-import SoundPlayer from 'react-native-sound-player';
 import MiniPlayer from '../components/MiniPlayer';
+import {useMoralis} from 'react-moralis';
+import {useMoralisDapp} from '../../providers/MoralisDappProvider/MoralisDappProvider';
+import {Overlay} from 'react-native-elements';
 
 const events = [
   TrackPlayerEvents.PLAYBACK_STATE,
@@ -30,73 +32,37 @@ const events = [
 const Tab = createBottomTabNavigator();
 
 export default function MainTabScreen(props) {
+  const {walletAddress, chainId} = useMoralisDapp();
+  const {Moralis, user, account} = useMoralis();
   const {state, dispatch} = useContext(PlayerContext);
-  const {index, items, playerIsVisible, likes} = state;
+  const {index, items, playerIsVisible, likes, pressNotificationFollow, pressNotificationSell} = state;
   const item = items[index];
   const {navigation} = props;
   const [playerState, setPlayerState] = useState(null);
+  const [postIsVisible, setPostIsVisible] = useState(false);
   useEffect(() => {
-    if (auth().currentUser) {
-      const likeRef = firestore()
-        .collection(`users/${auth().currentUser.uid}/likes`)
-        .doc(item && item.id);
-      const dislikeRef = firestore()
-        .collection(`users/${auth().currentUser.uid}/dislikes`)
-        .doc(item && item.id);
-      switch (likes) {
-        case false:
-          likeRef.delete();
-          dislikeRef.set({
-            duration: item.duration,
-            records: item.records,
-            isComment: item.isComment,
-            url: item.url,
-            genre: item.genre,
-            title: item.title,
-            updatedAt: new Date(),
-            artwork: item.artwork,
-            date: item.date,
-            postRange: item.postRange,
-            artist: firestore().collection('users').doc(item.artist.id),
-            tags: item.tags,
-          });
-          SoundPlayer.playSoundFile('dislike', 'mp3');
-          break;
-        case true:
-          dislikeRef.delete();
-          likeRef.set({
-            updatedAt: new Date(),
-            duration: item.duration,
-            records: item.records,
-            isComment: item.isComment,
-            url: item.url,
-            genre: item.genre,
-            title: item.title,
-            artwork: item.artwork,
-            date: item.date,
-            postRange: item.postRange,
-            artist: firestore().collection('users').doc(item.artist.id),
-            tags: item.tags,
-          });
-          SoundPlayer.playSoundFile('like', 'mp3');
-          break;
-        case null:
-          dislikeRef.delete();
-          likeRef.delete();
-          break;
-      }
+    if (pressNotificationFollow) {
+      navigation.navigate('profile', {id: pressNotificationFollow});
+      dispatch({type: 'FINISHNOTIFICATIONFOLLOW'});
     }
-  }, [likes]);
+  }, [pressNotificationFollow]);
+  useEffect(() => {
+    if (pressNotificationSell) {
+      navigation.navigate('Record', {item: pressNotificationSell});
+      dispatch({type: 'FINISHNOTIFICATIONSELL'});
+    }
+  }, [pressNotificationSell]);
   useEffect(() => {
     if (auth().currentUser) {
       const likeRef = firestore()
         .collection(`users/${auth().currentUser.uid}/likes`)
-        .doc(item && item.id);
+        .doc(item?.id);
       const dislikeRef = firestore()
         .collection(`users/${auth().currentUser.uid}/dislikes`)
-        .doc(item && item.id);
+        .doc(item?.id);
       likeRef.get().then(like => {
         dislikeRef.get().then(dislike => {
+          console.log(item.id);
           if (like._exists || dislike._exists) {
             if (like._exists) {
               dispatch({type: 'CHANGELIKE', likes: true});
@@ -109,7 +75,7 @@ export default function MainTabScreen(props) {
         });
       });
     }
-  }, [item]);
+  }, [item, playerIsVisible]);
 
   const togglePlay = async () => {
     if (playing) {
@@ -190,14 +156,44 @@ export default function MainTabScreen(props) {
           <TouchableOpacity
             style={styles.buttonContainer}
             onPress={() => {
-              navigation.navigate('RecordEdit');
+              setPostIsVisible(true);
             }}>
             <PostButton size={50} />
           </TouchableOpacity>
         </View>
       )}
-      <BottomSheet
-        isVisible={playerIsVisible}>
+      <Overlay
+        isVisible={postIsVisible}
+        overlayStyle={styles.overlay}
+        onBackdropPress={() => {
+          setPostIsVisible(false);
+        }}>
+        <TouchableOpacity
+          style={styles.overlayBotton}
+          onPress={() => {
+            setPostIsVisible(false);
+            navigation.navigate('RecordEdit');
+          }}>
+          <Text style={styles.overlayText}>投稿を作成</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.overlayBotton}
+          onPress={() => {
+            setPostIsVisible(false);
+            navigation.navigate('RecordCreate');
+          }}>
+          <Text style={styles.overlayText}>レコードを作成</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.overlayBotton}
+          onPress={() => {
+            setPostIsVisible(false);
+            navigation.navigate('RecordSell');
+          }}>
+          <Text style={styles.overlayText}>レコードを販売</Text>
+        </TouchableOpacity>
+      </Overlay>
+      <BottomSheet isVisible={playerIsVisible}>
         <RecordPlayerScreen />
       </BottomSheet>
     </View>
@@ -209,6 +205,12 @@ const styles = StyleSheet.create({
     position: 'relative',
     flex: 1,
     backgroundColor: 'white',
+  },
+  bottomBotton: {
+    flexDirection: 'row',
+    backgroundColor: 'white',
+    height: 56,
+    alignItems: 'center',
   },
   buttonContainer: {
     backgroundColor: '#F2994A',
@@ -225,13 +227,13 @@ const styles = StyleSheet.create({
     paddingRight: 4,
     paddingBottom: 4,
   },
-  bottomBotton: {
+  overlayBotton: {
     backgroundColor: 'white',
     justifyContent: 'center',
     height: 48,
-    paddingHorizontal: 12,
+    paddingRight: 96,
   },
-  bottomText: {
+  overlayText: {
     height: 24,
     fontSize: 18,
     justifyContent: 'center',

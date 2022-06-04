@@ -38,7 +38,7 @@ export default function RecordsList(props) {
           <View style={styles.infoContainer}>
             <View style={styles.infoValue}>
               <Icon name="play" size={16} />
-              <Text style={styles.infoText}>3000回</Text>
+              <Text style={styles.infoText}>{item.viewedAmount}回</Text>
             </View>
             <View style={styles.infoValue}>
               <Icon name="clock-outline" size={16} />

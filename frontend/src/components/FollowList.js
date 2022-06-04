@@ -1,4 +1,4 @@
-import React from 'react';
+import React, {useEffect} from 'react';
 import {StyleSheet, View, Text, Image, TouchableOpacity, FlatList} from 'react-native';
 import auth from '@react-native-firebase/auth';
 import firestore from '@react-native-firebase/firestore';
@@ -42,7 +42,7 @@ function UserItem({item}){
       }
     }
   }
-  React.useEffect(() => {
+  useEffect(() => {
     if (auth().currentUser) {
       const followRef = firestore()
         .collection(`users/${auth().currentUser.uid}/follows`)
@@ -52,7 +52,7 @@ function UserItem({item}){
       });
     }
   }, []);
-  React.useEffect(() => {
+  useEffect(() => {
     if (auth().currentUser) {
       const followerRef = firestore()
         .collection(`users/${auth().currentUser.uid}/followers`)
@@ -63,7 +63,7 @@ function UserItem({item}){
     }
   }, []);
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (auth().currentUser && follow !== null) {
       const followRef = firestore()
         .collection(`users/${auth().currentUser.uid}/follows`)

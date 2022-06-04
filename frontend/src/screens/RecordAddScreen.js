@@ -17,10 +17,29 @@ import auth from '@react-native-firebase/auth';
 import storage from '@react-native-firebase/storage';
 const RNFS = require('react-native-fs');
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import {useMoralisDapp} from '../../providers/MoralisDappProvider/MoralisDappProvider';
+import {useMoralis} from 'react-moralis';
+import {useWalletConnect} from '../../WalletConnect';
+import {useValidation} from 'react-native-form-validator';
+
+let axios = require('axios');
 
 export default function RecordAddScreen(props) {
+  let transactionId = null;
+  const connector = useWalletConnect();
+  const {
+    Moralis,
+    authenticate,
+    authError,
+    isAuthenticating,
+    user,
+    isAuthenticated,
+    web3,
+  } = useMoralis();
+
   const {navigation, route} = props;
   const {output, start, end} = route.params;
+  const [amount, setAmount] = useState('0');
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [playLists, setPlayLists] = useState([]);
@@ -32,19 +51,32 @@ export default function RecordAddScreen(props) {
   const [playlistIsVisible, setPlaylistIsVisible] = useState(false);
   const [postRange, setPostRange] = useState(0);
   const {editorState, editorDispatch} = useContext(EditorContext);
-  const [image, setImage] = useState(
-    'gs://hitokoto-309511.appspot.com/sample/image/m_e_others_500.png',
-  );
+  const {marketAddress, contractABI} = useMoralisDapp();
+  const listItemFunction = 'createRecordItem';
+
+  const [image, setImage] = useState('');
   const postRef = firestore().collection(
     `users/${auth().currentUser.uid}/records`,
   );
+
+  const {
+    validate,
+    isFieldInError,
+    isFormValid,
+    getErrorsInField,
+    getErrorMessages,
+  } = useValidation({
+    state: {
+      title,
+      genre,
+      image,
+      isComment,
+      playLists,
+      postRange,
+      amount,
+    },
+  });
   const postIndex = Date.now().toString();
-  const recordRef = storage()
-    .ref(`users/${auth().currentUser.uid}/records`)
-    .child(`${postIndex}`);
-  const imageRef = storage()
-    .ref(`users/${auth().currentUser.uid}/records`)
-    .child(`${postIndex}_artwork`);
 
   function playlistfetch() {
     if (auth().currentUser) {
@@ -84,109 +116,157 @@ export default function RecordAddScreen(props) {
     playlistfetch();
     navigation.setOptions({
       headerRight: () => (
-        <TouchableOpacity style={styles.postBotton} onPress={recordPost}>
+        <TouchableOpacity style={styles.postBotton} onPress={validateForm}>
           <Text style={styles.postText}>投稿</Text>
         </TouchableOpacity>
       ),
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [image, genre, title]);
-  const recordPost = () => {
-    const tags = genre.match(/[#＃][Ａ-Ｚａ-ｚA-Za-z一-鿆0-9０-９ぁ-ヶｦ-ﾟー]+/);
-    if (!uploading) {
-      setUploading(true);
-      RNFS.readFile(image, 'base64').then(async img => {
-        imageRef
-          .putString(img, 'base64')
-          .then(() => {
-            imageRef
-              .getDownloadURL()
-              .then(artwork => {
-                RNFS.readFile(output, 'base64')
-                  .then(res => {
-                    recordRef
-                      .putString(res, 'base64')
-                      .then(() => {
-                        recordRef
-                          .getDownloadURL()
-                          .then(url => {
-                            postRef
-                              .add({
-                                url,
-                                title,
-                                genre: genre.replace(/[#＃][Ａ-Ｚａ-ｚA-Za-z一-鿆0-9０-９ぁ-ヶｦ-ﾟー]+/, ''),
-                                artwork,
-                                isComment,
-                                tags: tags ? tags : [],
-                                postRange,
-                                playLists: checked,
-                                date: new Date(),
-                                artist: firestore().doc(
-                                  `users/${auth().currentUser.uid}`,
-                                ),
-                              })
-                              .then(docRef => {
-                                const id = editorState.records.length;
-                                editorDispatch({
-                                  type: 'RECORDSADD',
-                                  records: {
-                                    genre: genre.replace(/[#＃][Ａ-Ｚａ-ｚA-Za-z一-鿆0-9０-９ぁ-ヶｦ-ﾟー]+/, ''),
-                                    tags: tags ? tags : [],
-                                    id,
-                                    recordId: docRef.id,
-                                    title,
-                                    artwork,
-                                    url,
-                                    rate: 1,
-                                    trimStart: start,
-                                    trimEnd: end,
-                                    start: 0,
-                                    end: end - start,
-                                    volume: 100,
-                                    artist: auth().currentUser.uid,
-                                    storageId: postIndex,
-                                  },
-                                });
-                                setUploading(false);
-                                navigation.reset({
-                                  index: 1,
-                                  routes: [
-                                    {name: 'Main'},
-                                    {name: 'RecordEdit'},
-                                  ],
-                                });
-                              })
-                              .catch(e => {
-                                Alert.alert('投稿に失敗しました。');
-                                console.error(e);
-                              });
-                          })
-                          .catch(() => {
-                            Alert.alert(
-                              'オーディオファイルurl取得に失敗しました。',
-                            );
-                          });
-                      })
-                      .catch(() => {
-                        Alert.alert(
-                          'オーディオファイルのアップロードに失敗しました。',
-                        );
-                      });
-                  })
-                  .catch(() => {
-                    Alert.alert('オーディオファイルが読み込めません');
-                  });
-              })
-              .catch(() => {
-                Alert.alert('画像url取得に失敗しました。');
-              });
-          })
-          .catch(() => {
-            Alert.alert('画像のアップロードに失敗しました。');
-          });
-      });
+  }, [image, genre, title, playLists, amount, postRange]);
+  const validateForm = async () => {
+    await validate({
+      title: {minlength: 3, maxlength: 7, required: true},
+      image: {required: true},
+      amount: {required: true, numbers: true},
+    });
+    if (amount > 0) {
+      if (isAuthenticated) {
+        if (isFormValid()) recordMint();
+      } else {
+        Alert.alert('ウォレットに連携してください');
+      }
+    } else {
+      Alert.alert('作成数を増やしてください');
     }
   };
+
+  const recordMint = async () => {
+    if (!uploading) {
+      try {
+        const recordId = postRef.doc().id;
+        setUploading(true);
+        const img = await RNFS.readFile(image, 'base64');
+        const res = await RNFS.readFile(output, 'base64');
+        const file = await axios.post(
+          'https://deep-index.moralis.io/api/v2/ipfs/uploadFolder',
+          [
+            {
+              path: 'record/record.m4a',
+              content: res,
+            },
+            {
+              path: 'image/image.png',
+              content: img,
+            },
+          ],
+          {
+            headers: {
+              'X-API-KEY':
+                'cVfttjeoNgUpu1Plg6KlHBKAMl5MY5JDUBiktBNN8jZQHyioeg4xHCKUJ5dVglxk',
+              'Content-Type': 'application/json',
+              accept: 'application/json',
+            },
+          },
+        );
+        const recordUrl = file.data[0].path;
+        const recordHash =
+          'ipfs://' + recordUrl.match(/[a-zA-Z0-9]+\/record\/record.m4a/);
+        const imageUrl = file.data[1].path;
+        const imageHash =
+          'ipfs://' + imageUrl.match(/[a-zA-Z0-9]+\/image\/image.png/);
+        const metadataFile = await axios.post(
+          'https://deep-index.moralis.io/api/v2/ipfs/uploadFolder',
+          [
+            {
+              path: 'metadata/metadata.json',
+              content: {
+                image: imageHash,
+                name: title,
+                description: genre,
+                animation_url: recordHash,
+                recordId,
+              },
+            },
+          ],
+          {
+            headers: {
+              'X-API-KEY':
+                'cVfttjeoNgUpu1Plg6KlHBKAMl5MY5JDUBiktBNN8jZQHyioeg4xHCKUJ5dVglxk',
+              'Content-Type': 'application/json',
+              accept: 'application/json',
+            },
+          },
+        );
+        const metadataUrl = metadataFile.data[0].path;
+        const metadataHash =
+          'ipfs://' +
+          metadataUrl.match(/[a-zA-Z0-9]+\/metadata\/metadata.json/);
+        const data = web3.eth.abi.encodeFunctionCall(
+          {
+            name: listItemFunction,
+            type: 'function',
+            inputs: [
+              {type: 'string', name: 'metadata'},
+              {type: 'uint256', name: 'amount'},
+            ],
+          },
+          [metadataHash, amount],
+        );
+        transactionId = await connector.sendTransaction({
+          data,
+          from: connector.accounts[0],
+          to: marketAddress,
+        });
+        const recordRef = storage()
+          .ref(`users/${auth().currentUser.uid}/records`)
+          .child(`${postIndex}`);
+        const imageRef = storage()
+          .ref(`users/${auth().currentUser.uid}/records`)
+          .child(`${postIndex}_artwork`);
+        const tags = genre.match(
+          /[#＃][Ａ-Ｚａ-ｚA-Za-z一-鿆0-9０-９ぁ-ヶｦ-ﾟー]+/,
+        );
+        await imageRef.putString(img, 'base64');
+        await recordRef.putString(res, 'base64');
+        const artwork = await imageRef.getDownloadURL();
+        const url = await recordRef.getDownloadURL();
+        await postRef.doc(recordId).set({
+          viewedAmount: 0,
+          transactionId,
+          amount,
+          url,
+          title,
+          genre: genre.replace(
+            /[#＃][Ａ-Ｚａ-ｚA-Za-z一-鿆0-9０-９ぁ-ヶｦ-ﾟー]+/,
+            '',
+          ),
+          artwork,
+          isComment,
+          tags: tags ? tags : [],
+          postRange,
+          duration: end - start,
+          playLists: checked,
+          date: new Date(),
+          artist: firestore().doc(`users/${auth().currentUser.uid}`),
+          storageId: postIndex,
+        });
+        setUploading(false);
+        navigation.reset({
+          index: 0,
+          routes: [{name: 'Main'}],
+        });
+      } catch (error) {
+        console.log(error);
+        setUploading(false);
+      }
+    }
+  };
+  async function walletAuthentication() {
+    if (!isAuthenticated) await authenticate({connector});
+    if (authError) {
+      setErrortext(authError.message);
+    }
+  }
   function handlePress() {
     setIsVisible(true);
   }
@@ -247,8 +327,24 @@ export default function RecordAddScreen(props) {
   return (
     <ScrollView style={styles.container}>
       <TouchableOpacity onPress={handleImage} style={styles.imageContainer}>
-        <Image source={{uri: image}} style={styles.image} />
+        <Image
+          source={{
+            uri:
+              image !== ''
+                ? image
+                : 'https://firebasestorage.googleapis.com/v0/b/hitokoto-309511.appspot.com/o/samples%2F%E3%82%A2%E3%82%BB%E3%83%83%E3%83%88%201.png?alt=media&token=81a705de-c176-4964-90d3-294f01f65707',
+          }}
+          style={
+            image ? styles.image : {width: 96, height: 96, left: 4, top: 4}
+          }
+        />
       </TouchableOpacity>
+      {isFieldInError('image') &&
+        getErrorsInField('image').map(errorMessage => (
+          <Text style={{color: 'red', alignSelf: 'center', marginBottom: 32}}>
+            {errorMessage}
+          </Text>
+        ))}
       <View style={styles.Cell}>
         <Text style={styles.bottomText}>タイトル</Text>
         <Input
@@ -257,6 +353,22 @@ export default function RecordAddScreen(props) {
           value={title}
           onChangeText={e => {
             setTitle(e);
+          }}
+        />
+      </View>
+      {isFieldInError('title') &&
+        getErrorsInField('title').map(errorMessage => (
+          <Text style={{left: 104, color: 'red'}}>{errorMessage}</Text>
+        ))}
+      <View style={styles.Cell}>
+        <Text style={styles.bottomText}>作成数</Text>
+        <Input
+          keyboardType="number-pad"
+          placeholder="Amount"
+          containerStyle={styles.title}
+          value={amount}
+          onChangeText={e => {
+            setAmount(e);
           }}
         />
       </View>
@@ -281,6 +393,9 @@ export default function RecordAddScreen(props) {
         <Icon name="pound" size={16} color="#F2994A" />
         <Text style={styles.tagText}>タグを追加</Text>
       </TouchableOpacity>
+      <TouchableOpacity style={styles.Cell} onPress={playlistPress}>
+        <Text style={styles.bottomText}>プレイリストに追加</Text>
+      </TouchableOpacity>
       <TouchableOpacity
         style={styles.Cell}
         onPress={() => {
@@ -294,12 +409,6 @@ export default function RecordAddScreen(props) {
           {postRange === 3 && '非公開'}
         </Text>
       </TouchableOpacity>
-      <TouchableOpacity
-        style={styles.Cell}
-        onPress={() => {
-          handlePress(false);
-        }}
-      />
       <View style={styles.Cell}>
         <Text style={styles.bottomText}>コメントをオンにする</Text>
         <CheckBox
@@ -311,9 +420,15 @@ export default function RecordAddScreen(props) {
           checkedColor="#F2994A"
         />
       </View>
-
-      <TouchableOpacity style={styles.Cell} onPress={playlistPress}>
-        <Text style={styles.bottomText}>プレイリストに追加</Text>
+      <TouchableOpacity style={styles.Cell} onPress={walletAuthentication}>
+        {isAuthenticated ? (
+          <View>
+            <Text style={[styles.bottomText]}>ウォレット連携済</Text>
+            <Text>{user.attributes.ethAddress}</Text>
+          </View>
+        ) : (
+          <Text style={styles.bottomText}>ウォレットに連携する</Text>
+        )}
       </TouchableOpacity>
       <BottomSheet
         isVisible={isVisible}
@@ -406,10 +521,14 @@ const styles = StyleSheet.create({
     height: 120,
   },
   imageContainer: {
+    borderWidth: 0.5,
+    borderColor: '#F2994A',
+    alignItems: 'center',
+    justifyContent: 'center',
     width: 120,
     height: 120,
     alignSelf: 'center',
-    marginVertical: 32,
+    marginTop: 32,
     overflow: 'hidden',
     borderRadius: 60,
   },

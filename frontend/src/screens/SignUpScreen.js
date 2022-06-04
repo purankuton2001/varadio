@@ -38,17 +38,21 @@ export default function SignUpScreen(props) {
         },
       },
     },
-    (err, res) => {
+    async (err, res) => {
       const ref = firestore()
         .collection('users')
         .doc(`${auth().currentUser.uid}`);
       console.log(err, res);
-      ref.set({
-        name: res.name,
-        profileImage: res.picture.data.url,
-        description: '',
-        id: auth().currentUser.uid,
-      });
+      const exist = await ref.get();
+      if (!exist.exists) {
+        ref.set({
+          tokens: [],
+          name: res.name,
+          profileImage: res.picture.data.url,
+          description: '',
+          id: auth().currentUser.uid,
+        });
+      }
     },
   );
 
@@ -80,8 +84,9 @@ export default function SignUpScreen(props) {
       const errMsg = translateError(error.code);
       Alert.alert(errMsg.title, errMsg.description);
     });
-    const googleCredential =
-      firebase.auth.GoogleAuthProvider.credential(idToken);
+    const googleCredential = firebase.auth.GoogleAuthProvider.credential(
+      idToken,
+    );
     return firebase
       .auth()
       .signInWithCredential(googleCredential)
@@ -119,15 +124,19 @@ export default function SignUpScreen(props) {
     if (name && mail && password) {
       auth()
         .createUserWithEmailAndPassword(mail, password)
-        .then(() => {
+        .then(async () => {
           const ref = firestore()
             .collection('users')
             .doc(`${auth().currentUser.uid}`);
-          ref.set({
-            name,
-            description: '',
-            id: auth().currentUser.uid,
-          });
+          const exist = await ref.get();
+          if (!exist.exists) {
+            ref.set({
+              tokens: [],
+              name,
+              description: '',
+              id: auth().currentUser.uid,
+            });
+          }
           navigation.reset({
             index: 0,
             routes: [{name: 'Main'}],
@@ -187,13 +196,17 @@ export default function SignUpScreen(props) {
               .collection('users')
               .doc(`${auth().currentUser.uid}`);
             const {user} = await GoogleSignin.getCurrentUser();
-            ref.set({
-              name: user.name,
-              profileImage: user.photo,
-              description: '',
-              id: auth().currentUser.uid,
-              link: '',
-            });
+            const exist = await ref.get();
+            if (!exist.exists) {
+              ref.set({
+                tokens: [],
+                name: user.name,
+                profileImage: user.photo,
+                description: '',
+                id: auth().currentUser.uid,
+                link: '',
+              });
+            }
             navigation.reset({
               index: 0,
               routes: [{name: 'Main'}],

@@ -7,6 +7,7 @@ import {
 } from '@react-navigation/stack';
 import ProfileScreen from './ProfileScreen';
 import FollowScreen from './FollowScreen';
+import RecordScreen from './RecordScreen';
 
 
 const Stack = createStackNavigator();
@@ -33,7 +34,7 @@ export default function NotificationStackScreen(props) {
         }}
       />
       <Stack.Screen name="Follow" component={FollowScreen} getId={({ params }) => params.id} />
-
+      <Stack.Screen name="Record" component={RecordScreen} />
     </Stack.Navigator>
   );
 }

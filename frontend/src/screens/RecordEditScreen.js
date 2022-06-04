@@ -11,15 +11,38 @@ import {
   PanResponder,
   Animated,
   Dimensions,
+  Alert,
 } from 'react-native';
+import OwnRecordList from '../components/OwnRecordList';
 import Video from 'react-native-video';
 import Svg, {Path} from 'react-native-svg';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import {EditorContext} from '../../App';
 import DocumentPicker from 'react-native-document-picker';
 import PostButton from '../Icon/PostButton';
+import AudioRecord from 'react-native-audio-record';
+import Permissions, {PERMISSIONS} from 'react-native-permissions';
+import {BottomSheet} from 'react-native-elements/dist/bottomSheet/BottomSheet';
+import {
+  useMoralis,
+  useMoralisQuery,
+  useMoralisSubscription,
+} from 'react-moralis';
+import {useWalletConnect} from '../../WalletConnect';
 
 export default function RecordEditScreen(props) {
+  const connector = useWalletConnect();
+  const {
+    Moralis,
+    authenticate,
+    authError,
+    isAuthenticating,
+    user,
+    isAuthenticated,
+    web3,
+  } = useMoralis();
+  const [isVisible, setIsVisble] = useState();
+
   const [timePass, setTimePass] = useState();
   const [currentTime, setCurrentTime] = useState(0);
   const [start, setStart] = useState(0);
@@ -28,6 +51,7 @@ export default function RecordEditScreen(props) {
   const scrollWidth = width - 64;
   const {navigation} = props;
   const {editorState, editorDispatch} = useContext(EditorContext);
+
   const currentTimePan = new Animated.Value(
     (currentTime * scrollWidth) / editorState.duration,
   );
@@ -387,14 +411,12 @@ export default function RecordEditScreen(props) {
       endPan.flattenOffset();
     },
   });
-  const options = {
-    type: [
-      DocumentPicker.types.audio,
-      Platform.OS === 'ios' ? 'com.apple.quicktime-movie' : 'video/mp4',
-    ],
-  };
   const handlePress = () => {
-    navigation.navigate('RecordPost');
+    if (editorState.records.length > 0) {
+      navigation.navigate('RecordPost');
+    } else {
+      Alert.alert('レコードを追加してください');
+    }
   };
   useEffect(() => {
     navigation.setOptions({
@@ -405,7 +427,7 @@ export default function RecordEditScreen(props) {
       ),
     });
     return clearInterval(timePass);
-  }, []);
+  }, [editorState.records]);
   let RecordsPanResponer = [];
   let RecordsPan = [];
   const [RecordsRef, setRecordsRef] = useState([]);
@@ -418,8 +440,7 @@ export default function RecordEditScreen(props) {
         editorState.duration,
     );
     RecordsWidthPan[item.id] = new Animated.Value(
-      ((item.trimEnd - item.trimStart) * horizontalWidth) /
-        editorState.duration,
+      (item.duration * horizontalWidth) / editorState.duration,
     );
     RecordsPanResponer[item.id] = PanResponder.create({
       onStartShouldSetPanResponder: () => true,
@@ -437,24 +458,21 @@ export default function RecordEditScreen(props) {
 
         if (
           newPan +
-            ((item.trimEnd - item.trimStart) * horizontalWidth) /
-              editorState.duration +
+            (item.duration * horizontalWidth) / editorState.duration +
             24 >
             (end * horizontalWidth) / editorState.duration &&
           gestureState.dx >= 0
         ) {
           const newStartState =
             newPan +
-              ((item.trimEnd - item.trimStart) * horizontalWidth) /
-                editorState.duration +
+              (item.duration * horizontalWidth) / editorState.duration +
               24 >
             horizontalWidth
               ? editorState.duration - (end - start)
               : start + (24 * editorState.duration) / horizontalWidth;
           const newEndState =
             newPan +
-              ((item.trimEnd - item.trimStart) * horizontalWidth) /
-                editorState.duration +
+              (item.duration * horizontalWidth) / editorState.duration +
               24 >
             horizontalWidth
               ? editorState.duration
@@ -462,19 +480,16 @@ export default function RecordEditScreen(props) {
 
           RecordsPan[item.id].setValue(
             newPan +
-              ((item.trimEnd - item.trimStart) * horizontalWidth) /
-                editorState.duration +
+              (item.duration * horizontalWidth) / editorState.duration +
               24 >
               horizontalWidth
               ? horizontalWidth -
-                  ((item.trimEnd - item.trimStart) * horizontalWidth) /
-                    editorState.duration
+                  (item.duration * horizontalWidth) / editorState.duration
               : newPan + 24,
           );
           startPan.setValue(
             newPan +
-              ((item.trimEnd - item.trimStart) * horizontalWidth) /
-                editorState.duration +
+              (item.duration * horizontalWidth) / editorState.duration +
               24 >
               horizontalWidth
               ? scrollWidth -
@@ -484,8 +499,7 @@ export default function RecordEditScreen(props) {
           );
           endPan.setValue(
             newPan +
-              ((item.trimEnd - item.trimStart) * horizontalWidth) /
-                editorState.duration +
+              (item.duration * horizontalWidth) / editorState.duration +
               24 >
               horizontalWidth
               ? scrollWidth
@@ -498,11 +512,10 @@ export default function RecordEditScreen(props) {
             type: 'SEEKRECORDS',
             value:
               newPan +
-                ((item.trimEnd - item.trimStart) * horizontalWidth) /
-                  editorState.duration +
+                (item.duration * horizontalWidth) / editorState.duration +
                 24 >
               horizontalWidth
-                ? editorState.duration - (item.trimEnd - item.trimStart)
+                ? editorState.duration - item.duration
                 : newState + (24 * editorState.duration) / horizontalWidth,
             id: item.id,
           });
@@ -583,17 +596,15 @@ export default function RecordEditScreen(props) {
               if (
                 newPan >
                 horizontalWidth -
-                  ((item.trimEnd - item.trimStart) * horizontalWidth) /
-                    editorState.duration
+                  (item.duration * horizontalWidth) / editorState.duration
               ) {
                 RecordsPan[item.id].setValue(
-                  ((editorState.duration - item.trimEnd + item.trimStart) *
-                    horizontalWidth) /
+                  ((editorState.duration - item.duration) * horizontalWidth) /
                     editorState.duration,
                 );
                 editorDispatch({
                   type: 'SEEKRECORDS',
-                  value: editorState.duration - (item.trimEnd - item.trimStart),
+                  value: editorState.duration - item.duration,
                   id: item.id,
                 });
               } else {
@@ -654,7 +665,9 @@ export default function RecordEditScreen(props) {
 
   return (
     <View style={styles.container}>
-      <Text>{currentTime}</Text>
+      <Text style={styles.currentTime}>
+        {Math.round(currentTime * 10) / 10}
+      </Text>
       <View style={styles.displayRange}>
         <View
           style={{
@@ -798,34 +811,31 @@ export default function RecordEditScreen(props) {
         </View>
       </ScrollView>
       <View style={styles.recordsAdd}>
-        <TouchableOpacity>
-          <Icon name="music" size={32} color="black" />
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.buttonContainer} onPress={() => {}}>
-          <PostButton size={64} />
-        </TouchableOpacity>
+        {!isAuthenticated && (
+          <TouchableOpacity
+            style={styles.walletContainer}
+            onPress={() => {
+              authenticate({connector});
+            }}>
+            <Text style={styles.walletText}>ウォレット連携</Text>
+          </TouchableOpacity>
+        )}
         <TouchableOpacity
-          onPress={async () => {
-            const response = await DocumentPicker.pick(options);
-            try {
-              console.log('Response = ', response);
-              const extension = await response[0].uri.match(/[^.]+$/);
-              console.log(extension);
-              const isVideo = response[0].type.indexOf('audio') === -1;
-              navigation.navigate('Trimming', {
-                filename: response[0].uri,
-                isVideo,
-                extension,
-              });
-            } catch (error) {
-              if (!DocumentPicker.isCancel(error)) {
-                throw error;
-              }
-            }
+          style={[styles.buttonContainer, {elevation: isAuthenticated ? 8 : 0}]}
+          onPress={() => {
+            setIsVisble(true);
           }}>
-          <Icon name="folder" size={32} color="black" />
+          <PostButton size={64} color="white" />
         </TouchableOpacity>
+        {!isAuthenticated && <View style={styles.buttonDisable} />}
       </View>
+      <BottomSheet isVisible={isVisible}>
+        <OwnRecordList
+          close={() => {
+            setIsVisble(false);
+          }}
+        />
+      </BottomSheet>
     </View>
   );
 }
@@ -835,6 +845,10 @@ const styles = StyleSheet.create({
     backgroundColor: 'white',
     flex: 1,
     paddingHorizontal: 20,
+  },
+  currentTime: {
+    marginTop: 8,
+    fontSize: 14,
   },
   time: {
     flexDirection: 'row',
@@ -919,11 +933,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   buttonContainer: {
+    position: 'relative',
+    zIndex: 0,
     backgroundColor: '#F2994A',
     width: 88,
     height: 88,
     borderRadius: 44,
-    elevation: 8,
     alignItems: 'center',
     justifyContent: 'center',
     paddingRight: 4,
@@ -931,10 +946,27 @@ const styles = StyleSheet.create({
     marginHorizontal: 32,
   },
   recordsAdd: {
-    flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
     width: '100%',
     marginBottom: 32,
+  },
+  walletContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingLeft: 8,
+  },
+  walletText: {
+    marginVertical: 12,
+    fontWeight: 'bold',
+  },
+  buttonDisable: {
+    zIndex: 10,
+    bottom: 0,
+    position: 'absolute',
+    width: 88,
+    height: 88,
+    borderRadius: 44,
+    backgroundColor: 'rgba(0.5, 0.25, 0, 0.4)',
   },
 });

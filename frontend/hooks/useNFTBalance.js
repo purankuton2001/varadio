@@ -6,23 +6,35 @@ import {
   useMoralis,
 } from 'react-moralis';
 import {useIPFS} from './useIPFS';
+let axios = require('axios');
 
 export const useNFTBalance = props => {
   const {account} = useMoralisWeb3Api();
   const {chainId, walletAddress} = useMoralisDapp();
   const {isInitialized} = useMoralis();
   const {resolveLink} = useIPFS();
+  const [data, setData] = useState();
   const [NFTBalance, setNFTBalance] = useState([]);
-  const {fetch: getNFTBalance, data, error, isLoading} = useMoralisWeb3ApiCall(
-    account.getNFTs,
-    {
-      chain: chainId,
-      address: walletAddress,
-      ...props,
-    },
-  );
+  async function fetch() {
+    const res = await axios.get(
+      `https://deep-index.moralis.io/api/v2/${walletAddress}/nft?chain=mumbai&format=decimal`,
+      {
+        headers: {
+          'X-API-KEY':
+            'cVfttjeoNgUpu1Plg6KlHBKAMl5MY5JDUBiktBNN8jZQHyioeg4xHCKUJ5dVglxk',
+          'Content-Type': 'application/json',
+          accept: 'application/json',
+        },
+      },
+    );
+    setData(res.data);
+  }
+  useEffect(() => {
+    fetch();
+  }, []);
 
   useEffect(() => {
+    console.log(data);
     if (isInitialized) {
       if (data?.result) {
         const NFTs = data.result;
@@ -37,13 +49,15 @@ export const useNFTBalance = props => {
 
             // metadata is a string type
             NFT.image = resolveLink(NFT.metadata?.image);
+            NFT.url = resolveLink(NFT.metadata?.animation_url);
           }
         }
         setNFTBalance(NFTs);
+        console.log(NFTs);
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isInitialized, chainId, walletAddress, data]);
 
-  return {getNFTBalance, NFTBalance, error, isLoading};
+  return {NFTBalance};
 };

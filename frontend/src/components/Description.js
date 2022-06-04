@@ -12,8 +12,11 @@ import {
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import {PlayerContext} from '../../App';
 import {dateToString} from '../utils';
+import auth from '@react-native-firebase/auth';
+import {useNavigation} from '@react-navigation/native';
 
-export default function Description() {
+export default function Description({dislikesAmount, likesAmount}) {
+  const navigation = useNavigation();
   const {state, dispatch} = useContext(PlayerContext);
   const {items, index} = state;
   const item = items[index];
@@ -35,7 +38,12 @@ export default function Description() {
 
   return (
     <View style={styles.container}>
-      <View style={styles.profile}>
+      <TouchableOpacity
+        style={styles.profile}
+        onPress={() => {
+          navigation.navigate('profile', {id: item.artist.id});
+          dispatch({type: 'PLAYERTOGGLEOPEN'});
+        }}>
         <View style={styles.profileTitle}>
           {item && item.artist && (
             <Image
@@ -47,19 +55,33 @@ export default function Description() {
             {item && item.artist && item.artist.name}
           </Text>
         </View>
-        <TouchableOpacity style={styles.button}>
-          <Text style={styles.buttonText}>フォロー</Text>
-        </TouchableOpacity>
-      </View>
-      <Text style={styles.title}>{item && item.title}</Text>
+        {auth().currentUser.uid !== item.artist.id && (
+          <TouchableOpacity
+            style={[
+              styles.button,
+              {backgroundColor: follow ? 'white' : '#F2994A'},
+            ]}
+            onPress={followPress}>
+            <Text
+              style={[styles.buttonText, {color: follow ? 'black' : 'white'}]}>
+              {followText()}
+            </Text>
+          </TouchableOpacity>
+        )}
+      </TouchableOpacity>
+      <Text style={styles.title}>{item?.title}</Text>
       <View style={styles.infoContainer}>
         <View style={styles.infoValue}>
           <Icon name="play" size={16} />
-          <Text style={styles.infoText}>3000回</Text>
+          <Text style={styles.infoText}>{item.viewedAmount}回</Text>
         </View>
         <View style={styles.infoValue}>
-          <Icon name="heart" size={12} />
-          <Text style={styles.infoText}>200</Text>
+          <Icon name="thumb-up" size={12} />
+          <Text style={styles.infoText}>{likesAmount || 0}</Text>
+        </View>
+        <View style={styles.infoValue}>
+          <Icon name="thumb-down" size={12} />
+          <Text style={styles.infoText}>{dislikesAmount || 0}</Text>
         </View>
         <View style={styles.infoValue}>
           <Icon name="clock-outline" size={14} />
@@ -90,6 +112,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
   },
   profile: {
+    marginVertical: 4,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
@@ -124,6 +147,7 @@ const styles = StyleSheet.create({
     color: '#F2994A',
   },
   title: {
+    fontWeight: 'bold',
     height: 24,
     fontSize: 20,
     marginTop: 8,
@@ -144,6 +168,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   infoContainer: {
+    marginVertical: 8,
     flexDirection: 'row',
     height: 16,
     alignItems: 'center',
@@ -152,7 +177,7 @@ const styles = StyleSheet.create({
     color: 'black',
     fontSize: 14,
     height: 16,
-    marginRight: 8,
+    marginHorizontal: 4,
     marginBottom: 2,
   },
   infoValue: {

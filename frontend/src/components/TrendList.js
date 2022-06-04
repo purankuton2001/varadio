@@ -1,42 +1,68 @@
 import {useNavigation} from '@react-navigation/native';
-import React from 'react';
-import {TouchableOpacity} from 'react-native';
-import {StyleSheet, View, Text, Image, ScrollView} from 'react-native';
+import React, {useContext} from 'react';
+import {Alert, TouchableOpacity} from 'react-native';
+import {StyleSheet, View, Text, Image, FlatList} from 'react-native';
+import {PlayerContext} from '../../App';
 
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 
-export default function TrendList() {
+export default function TrendList({items, tab}) {
+  const {dispatch} = useContext(PlayerContext);
   const navigation = useNavigation();
-  function handlePress(name) {
-    navigation.navigate(name);
+  function RenderPosts({item, index, recordPosts}) {
+    return (
+      <TouchableOpacity
+        onPress={() => {
+          console.log(index);
+          dispatch({type: 'CONTENTSSELECT', items: recordPosts, index});
+        }}>
+        <Image source={{uri: item?.artwork}} style={styles.image} />
+      </TouchableOpacity>
+    );
+  }
+  function renderItem({item}) {
+    return (
+      <View style={styles.container}>
+        <TouchableOpacity
+          style={styles.item}
+          onPress={() => {
+            navigation.navigate(tab, {item});
+          }}>
+          <View style={styles.header}>
+            <Text style={styles.title}>{item?.title}</Text>
+            {item.viewedAmount && (
+              <View style={styles.infoValue}>
+                <Icon name="play" size={16} />
+                <Text style={styles.infoText}>{item.viewedAmount}回</Text>
+              </View>
+            )}
+          </View>
+          <FlatList
+            horizontal
+            style={styles.itemList}
+            data={item.recordPosts}
+            renderItem={({item: it, index}) => {
+              return (
+                <RenderPosts
+                  item={it}
+                  index={index}
+                  recordPosts={item.recordPosts}
+                  listKey={item => item.id}
+                />
+              );
+            }}
+          />
+        </TouchableOpacity>
+      </View>
+    );
   }
   return (
-    <View style={styles.container}>
-      <TouchableOpacity
-        style={styles.item}
-        onPress={() => {
-          handlePress('PlayList');
-        }}>
-        <View style={styles.header}>
-          <Text style={styles.title}>声真似集</Text>
-          <View style={styles.infoValue}>
-            <Icon name="play" size={16} />
-            <Text style={styles.infoText}>3000回</Text>
-          </View>
-        </View>
-        <ScrollView style={styles.itemList} horizontal>
-          <TouchableOpacity
-            onPress={() => {
-              handlePress('Player');
-            }}>
-            <Image
-              source={{uri: 'https://reactjs.org/logo-og.png'}}
-              style={styles.image}
-            />
-          </TouchableOpacity>
-        </ScrollView>
-      </TouchableOpacity>
-    </View>
+    <FlatList
+      style={styles.listContainer}
+      data={items}
+      renderItem={renderItem}
+      keyExtractor={item => item.id}
+    />
   );
 }
 
@@ -44,6 +70,9 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: 'white',
+  },
+  listContainer: {
+    marginBottom: 70,
   },
   item: {
     width: '100%',
@@ -68,12 +97,14 @@ const styles = StyleSheet.create({
     height: 16,
   },
   itemList: {
-    marginTop: 24,
+    marginTop: 8,
   },
   image: {
-    borderRadius: 24,
-    width: 80,
-    height: 80,
+    borderColor: '#FFA800',
+    borderWidth: 0.5,
+    borderRadius: 32,
+    width: 64,
+    height: 64,
     marginRight: 16,
   },
 });

@@ -1,4 +1,4 @@
-import React, {useContext, useState} from 'react';
+import React, {useContext, useEffect, useState} from 'react';
 import {
   ScrollView,
   View,
@@ -9,67 +9,102 @@ import {
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import Description from './Description';
-import DraggableList from './DraggableList';
+import NextList from './NextList';
 import {PlayerContext} from '../../App';
 import CommentListScreen from '../screens/CommentListScreen';
 
 export default function PlayerBottom(props) {
   const {height} = Dimensions.get('window');
-  const {tab, changeTab} = props;
+  const {tab, changeTab, likesAmount, dislikesAmount} = props;
   const {state, dispatch} = useContext(PlayerContext);
+  useEffect(() => {
+    if (tab === 'next') {
+      setLoading(true);
+      setTimeout(() => {
+        setLoading(false);
+      }, 0.01);
+    }
+  }, [state?.index]);
   const [items, setItems] = useState(state.items);
+  const [loading, setLoading] = useState(false);
 
   return (
     <View style={[styles.container, {height}]}>
-      {tab !== false &&
-      <TouchableOpacity
-        style={styles.cancel}
-        onPress={() => {
-          changeTab(false);
-        }}>
-        <Icon name="chevron-down" size={40} color="white" />
-      </TouchableOpacity>}
+      {tab !== false && (
+        <TouchableOpacity
+          style={styles.cancel}
+          onPress={() => {
+            changeTab(false);
+          }}>
+          <Icon name="chevron-down" size={40} color="white" />
+        </TouchableOpacity>
+      )}
       <View style={styles.topTab}>
         <TouchableOpacity
           style={styles.topTabItem}
           onPress={() => {
             changeTab('next');
           }}>
-          <Text style={[styles.topTabText, {color: tab == 'next' ? 'red' : 'white'}]}>Next</Text>
+          <Text
+            style={[
+              styles.topTabText,
+              {color: tab == 'next' ? 'red' : 'white'},
+            ]}>
+            Next
+          </Text>
         </TouchableOpacity>
         <TouchableOpacity
           style={styles.topTabItem}
           onPress={() => {
             changeTab('description');
           }}>
-          <Text style={[styles.topTabText, {color: tab == 'description' ? 'red' : 'white'}]}>Description</Text>
+          <Text
+            style={[
+              styles.topTabText,
+              {color: tab == 'description' ? 'red' : 'white'},
+            ]}>
+            Description
+          </Text>
         </TouchableOpacity>
         <TouchableOpacity
           style={styles.topTabItem}
           onPress={() => {
             changeTab('comments');
           }}>
-          <Text style={[styles.topTabText, {color: tab == 'comments' ? 'red' : 'white'}]}>Comments</Text>
+          <Text
+            style={[
+              styles.topTabText,
+              {color: tab == 'comments' ? 'red' : 'white'},
+            ]}>
+            Comments
+          </Text>
         </TouchableOpacity>
         <TouchableOpacity
           style={styles.topTabItem}
           onPress={() => {
             changeTab('related');
           }}>
-          <Text style={[styles.topTabText, {color: tab == 'related' ? 'red' : 'white'}]}>Related</Text>
+          <Text
+            style={[
+              styles.topTabText,
+              {color: tab == 'related' ? 'red' : 'white'},
+            ]}>
+            Related
+          </Text>
         </TouchableOpacity>
       </View>
       <View style={styles.tabContent}>
-        {tab === 'next' && (
-          <DraggableList
-            items={items}
-            dragEnd={({data}) => {
-              setItems(data);
-              dispatch({type: 'ITEMSUPDATE', data});
-            }}
+        {!loading && tab === 'next' && (
+          <ScrollView style={{flex: 1}}>
+            <NextList items={items} idx={state.index} />
+          </ScrollView>
+        )}
+        {tab === 'description' && (
+          <Description
+            likesAmount={likesAmount}
+            dislikesAmount={dislikesAmount}
           />
         )}
-        {tab === 'description' && <Description />}
         {tab === 'comments' && <CommentListScreen />}
         {tab === 'related' && <Description />}
       </View>

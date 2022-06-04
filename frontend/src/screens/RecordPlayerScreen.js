@@ -22,12 +22,13 @@ import TrackPlayer, {
 } from 'react-native-track-player';
 import firestore from '@react-native-firebase/firestore';
 import auth from '@react-native-firebase/auth';
+import analytics from '@react-native-firebase/analytics';
 import SoundPlayer from 'react-native-sound-player';
 import PlayerBottom from '../components/PlayerBottom';
 import MiniPlayer from '../components/MiniPlayer';
 import CheckBox from '@react-native-community/checkbox';
 import AddPlayList from '../components/AddPlayList';
-import { useNavigation } from '@react-navigation/native';
+import {useNavigation} from '@react-navigation/native';
 
 const events = [
   TrackPlayerEvents.PLAYBACK_STATE,
@@ -41,13 +42,17 @@ export default function RecordPlayerScreen(props) {
   const {height} = Dimensions.get('window');
   const [playerState, setPlayerState] = useState(null);
   const {state, dispatch} = useContext(PlayerContext);
-  const {index, items, likes} = state;
+  const {index, items, likes, pressNotification} = state;
   const item = items[index];
+  const [likeAmount, setLikeAmount] = useState(0);
+  const [disLikeAmount, setDisLikeAmount] = useState(0);
   const [visible, setVisible] = useState(false);
   const [follow, setFollow] = useState(null);
   const [playLists, setPlayLists] = useState();
   const [checked, setChecked] = useState([]);
   const [follower, setFollower] = useState(false);
+
+  useEffect(() => {if(pressNotification)setTab('comments');}, [pressNotification]);
 
   const changeVisible = st => {
     setVisible(st);
@@ -80,8 +85,26 @@ export default function RecordPlayerScreen(props) {
   };
   const followPress = () => {
     setFollow(!follow);
-  }
+  };
 
+  useEffect(() => {
+    if (auth().currentUser) {
+      const likesRef = firestore()
+        .collection(`posts/${item.id}/likes`)
+      likesRef.get().then(likes => {
+        setLikeAmount(likes.size);
+      });
+    }
+  }, [item]);
+  useEffect(() => {
+    if (auth().currentUser) {
+      const dislikesRef = firestore()
+        .collection(`posts/${item.id}/dislikes`)
+      dislikesRef.get().then(dislikes => {
+        setDisLikeAmount(dislikes.size);
+      });
+    }
+  }, [item]);
   useEffect(() => {
     if (auth().currentUser) {
       const followerRef = firestore()
@@ -106,28 +129,25 @@ export default function RecordPlayerScreen(props) {
   }, [item]);
 
   useEffect(() => {
-    if (auth().currentUser && follow !==null) {
+    if (auth().currentUser && follow !== null) {
       const followRef = firestore()
         .collection(`users/${auth().currentUser.uid}/follows`)
         .doc(item?.artist?.id);
-        follow ? followRef.set(item.artist):followRef.delete();
-      }
+      follow ? followRef.set(item.artist) : followRef.delete();
+    }
   }, [follow]);
 
-  function followText () {
-    if(follow && follower){
-      return "相互フォロー"
-    }
-    else{
-      if(follow){
-        return "フォロー中"
-      }
-      else{
-        if(follower){
-          return "フォロー返し"
-        }
-        else{
-          return "フォロー"
+  function followText() {
+    if (follow && follower) {
+      return '相互フォロー';
+    } else {
+      if (follow) {
+        return 'フォロー中';
+      } else {
+        if (follower) {
+          return 'フォロー返し';
+        } else {
+          return 'フォロー';
         }
       }
     }
@@ -190,18 +210,21 @@ export default function RecordPlayerScreen(props) {
       position > item.start &&
       position < item.end && (
         <TouchableOpacity
-          onPress={() =>
-          {
-            firestore().doc(`users/${item.artist}`).get().then(a => {
-            const artist = a.data();
-            navigation.navigate('Record', {item:{
-              ...item,
-              id: item.recordId,
-              artist,
-            }})
-            dispatch({type:'PLAYERTOGGLEOPEN'})
-            })
-
+          onPress={() => {
+            firestore()
+              .doc(`users/${item.artist}`)
+              .get()
+              .then(a => {
+                const artist = a.data();
+                navigation.navigate('Record', {
+                  item: {
+                    ...item,
+                    id: item.recordId,
+                    artist,
+                  },
+                });
+                dispatch({type: 'PLAYERTOGGLEOPEN'});
+              });
           }}
           style={styles.recordsItem}>
           <Image source={{uri: item.artwork}} style={styles.recordsArtwork} />
@@ -211,12 +234,16 @@ export default function RecordPlayerScreen(props) {
     );
   }
   function renderTag({item}) {
-    return <TouchableOpacity onPress={() => {
-      navigation.navigate('Tag', {item});
-      dispatch({type: 'PLAYERTOGGLEOPEN'})
-      }}>
-              <Text style={styles.tagTitle}>{item}</Text>
-          </TouchableOpacity>;}
+    return (
+      <TouchableOpacity
+        onPress={() => {
+          navigation.navigate('Tag', {item});
+          dispatch({type: 'PLAYERTOGGLEOPEN'});
+        }}>
+        <Text style={styles.tagTitle}>{item}</Text>
+      </TouchableOpacity>
+    );
+  }
 
   const togglePlay = async () => {
     if (playing) {
@@ -261,7 +288,7 @@ export default function RecordPlayerScreen(props) {
             nestedScrollEnabled={true}
             data={item.records}
             renderItem={renderItem}
-            keyExtractor={item => item.id}
+            keyExtractor={item => toString(item.id)}
           />
         )}
       </View>
@@ -277,10 +304,12 @@ export default function RecordPlayerScreen(props) {
           />
         )}
       </View>
-      <TouchableOpacity style={styles.profile} onPress={() => {
-        navigation.navigate('profile', {id: item.artist.id});
-        dispatch({type: 'PLAYERTOGGLEOPEN'})
-      }}>
+      <TouchableOpacity
+        style={styles.profile}
+        onPress={() => {
+          navigation.navigate('profile', {id: item.artist.id});
+          dispatch({type: 'PLAYERTOGGLEOPEN'});
+        }}>
         <View style={styles.profileTitle}>
           {item?.artist && (
             <Image
@@ -292,17 +321,23 @@ export default function RecordPlayerScreen(props) {
             {item?.artist && item.artist.name}
           </Text>
         </View>
-        {(auth().currentUser.uid !== item.artist.id)
-        &&
-        (<TouchableOpacity
-          style={[styles.button,
-          {backgroundColor: follow ? 'white':'#F2994A',}]}
-          onPress={followPress}>
-          <Text style={[styles.buttonText,{color: follow ? 'black':'white'}]}>{followText()}</Text>
-        </TouchableOpacity>)}
+        {auth().currentUser.uid !== item.artist.id && (
+          <TouchableOpacity
+            style={[
+              styles.button,
+              {backgroundColor: follow ? 'white' : '#F2994A'},
+            ]}
+            onPress={followPress}>
+            <Text
+              style={[styles.buttonText, {color: follow ? 'black' : 'white'}]}>
+              {followText()}
+            </Text>
+          </TouchableOpacity>
+        )}
       </TouchableOpacity>
       <View style={styles.header}>
         <TouchableOpacity
+          style={styles.feedbackButton}
           onPress={() => {
             if (likes !== false) {
               dispatch({type: 'SETLIKE', likes: false});
@@ -310,20 +345,22 @@ export default function RecordPlayerScreen(props) {
               dispatch({type: 'SETLIKE', likes: null});
             }
           }}>
+          <Text style={[styles.amount, {color: likes === false ? '#F2994A' : '#A7A7A7'}]}>{disLikeAmount || 0}</Text>
           <Icon
             name="thumb-down"
             size={32}
             color={likes === false ? '#F2994A' : '#A7A7A7'}
           />
         </TouchableOpacity>
-
-        <Text style={styles.title}>{item && item.title}</Text>
+        <Text style={styles.title}>{item?.title}</Text>
         <TouchableOpacity
+          style={styles.feedbackButton}
           onPress={() => {
             !likes
               ? dispatch({type: 'SETLIKE', likes: true})
               : dispatch({type: 'SETLIKE', likes: null});
           }}>
+          <Text style={[styles.amount, {color: likes ? '#F2994A' : '#A7A7A7'}]}>{likeAmount || 0}</Text>
           <Icon
             name="thumb-up"
             size={32}
@@ -377,7 +414,7 @@ export default function RecordPlayerScreen(props) {
             transform: [{translateY: tab !== false ? 120 - height : 0}],
           },
         ]}>
-        <PlayerBottom tab={tab} changeTab={changeTab} />
+        <PlayerBottom tab={tab} likesAmount={likeAmount} dislikesAmount={disLikeAmount} changeTab={changeTab} />
       </View>
       {/* <View>
         <Text style={styles.description}>{item && item.genre} </Text>
@@ -496,10 +533,10 @@ const styles = StyleSheet.create({
   },
   header: {
     alignItems: 'center',
-    marginVertical: 16,
     flexDirection: 'row',
     width: '100%',
     justifyContent: 'space-between',
+    marginTop: 8,
   },
   controllerButton: {
     borderRadius: 16,
@@ -508,10 +545,18 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
   },
+  amount: {
+    marginBottom: 2,
+    fontSize: 15,
+  },
   controllerText: {
     fontSize: 18,
     height: 24,
     color: 'white',
+  },
+  feedbackButton: {
+    alignItems:'center',
+    marginBottom: 24,
   },
   play: {
     width: 72,

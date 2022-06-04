@@ -48,11 +48,11 @@ export default function ProfileEditScreen(props) {
       });
     }
     ref.update({
-      description:description ? description : "",
-      name:name ? name : "",
+      description: description ? description : '',
+      name: name ? name : '',
       profileImage: image,
-      link:link ? link : "",
-      location: location ? location : "",
+      link: link ? link : '',
+      location: location ? location : '',
     });
     navigation.reset({
       index: 0,
@@ -150,7 +150,7 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     marginVertical: 32,
     overflow: 'hidden',
-    borderRadius: 24,
+    borderRadius: 60,
   },
   bottomBotton: {
     flexDirection: 'row',

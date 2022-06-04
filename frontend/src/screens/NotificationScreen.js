@@ -1,4 +1,5 @@
 import React, {useEffect} from 'react';
+import {View} from 'react-native';
 import MessageList from '../components/MessageList';
 import NotificationList from '../components/NotificationList';
 import {createMaterialTopTabNavigator} from '@react-navigation/material-top-tabs';
@@ -19,5 +20,9 @@ export default function NotificationScreen(props) {
     });
     return unsubscribe;
   });
-  return <NotificationList />;
+  return (
+    <View style={{flex: 1, backgroundColor: 'white'}}>
+      <NotificationList />
+    </View>
+  );
 }

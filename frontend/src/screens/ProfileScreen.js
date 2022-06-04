@@ -1,6 +1,7 @@
 /* eslint-disable react-native/no-inline-styles */
 import React, {useEffect, useState} from 'react';
 import {StyleSheet, ScrollView, Alert, TouchableOpacity} from 'react-native';
+import SellsList from '../components/SellsList';
 import ContentsList from '../components/ContentsList';
 import RecordsList from '../components/RecordsList';
 import UserPlayList from '../components/UserPlayList';
@@ -21,17 +22,16 @@ export default function ProfileScreen(props) {
   const [posts, setPosts] = useState();
   const [records, setRecords] = useState();
   const [playLists, setPlayLists] = useState();
+  const [sells, setSells] = useState();
 
   function playlistfetch() {
     if (auth().currentUser) {
       const db = firestore();
       const ref = id
-      ? db
-      .collection(`users/${id}/playLists`)
-      .orderBy('date', 'desc')
-      : db
-        .collection(`users/${auth().currentUser.uid}/playLists`)
-        .orderBy('date', 'desc');
+        ? db.collection(`users/${id}/playLists`).orderBy('date', 'desc')
+        : db
+            .collection(`users/${auth().currentUser.uid}/playLists`)
+            .orderBy('date', 'desc');
       const subscribe = ref.onSnapshot(
         snapshot => {
           const userPlayLists = [];
@@ -62,18 +62,61 @@ export default function ProfileScreen(props) {
       return subscribe;
     }
   }
+  function sellfetch() {
+    if (auth().currentUser) {
+      const db = firestore();
+      const ref = id
+        ? db.collection(`users/${id}/sells`).orderBy('date', 'desc')
+        : db
+            .collection(`users/${auth().currentUser.uid}/sells`)
+            .orderBy('date', 'desc');
+      const subscribe = ref.onSnapshot(
+        snapshot => {
+          const userSells = [];
+          snapshot.forEach((doc, index) => {
+            const data = doc.data();
+            data.seller?.get().then(res => {
+              firestore()
+                .doc(`records/${data.recordId}`)
+                .get()
+                .then(re => {
+                  const record = re.data();
+                  const seller = res.data();
+                  userSells.push({
+                    record,
+                    id: doc.id,
+                    date: data.date.toDate(),
+                    seller,
+                    amount: data.amount,
+                    price: data.price,
+                    sellId: data.sellId,
+                  });
+                  if (index === snapshot.size - 1) {
+                    setSells(userSells);
+                    setLoading(false);
+                  }
+                });
+            });
+          });
+        },
+        () => {
+          setLoading(false);
+          Alert.alert('データの読み込みに失敗しました。');
+        },
+      );
+      return subscribe;
+    }
+  }
 
   function postsfetch() {
     let unsubscribe3 = () => {};
     if (auth().currentUser) {
       const db = firestore();
       const ref = id
-      ? db
-      .collection(`users/${id}/posts`)
-      .orderBy('date', 'desc')
-      : db
-        .collection(`users/${auth().currentUser.uid}/posts`)
-        .orderBy('date', 'desc');
+        ? db.collection(`users/${id}/posts`).orderBy('date', 'desc')
+        : db
+            .collection(`users/${auth().currentUser.uid}/posts`)
+            .orderBy('date', 'desc');
       unsubscribe3 = ref.onSnapshot(
         snapshot => {
           const userposts = [];
@@ -82,13 +125,13 @@ export default function ProfileScreen(props) {
             if (data.url) {
               const artist = await data.artist.get();
               userposts.push({
+                viewedAmount: data.viewedAmount,
                 duration: data.duration,
                 id: doc.id,
                 title: data.title,
                 artwork: data.artwork,
                 date: data.date.toDate(),
                 postRange: data.postRange,
-                materialRange: data.materialRange,
                 isComment: data.isComment,
                 genre: data.genre,
                 url: data.url,
@@ -96,6 +139,7 @@ export default function ProfileScreen(props) {
                 tags: data.tags,
                 records: data.records,
                 playLists: data.playLists,
+                postId: data.postId,
               });
               setPosts(userposts);
               setLoading(false);
@@ -116,12 +160,10 @@ export default function ProfileScreen(props) {
     if (auth().currentUser) {
       const db = firestore();
       const ref = id
-      ? db
-      .collection(`users/${id}/records`)
-      .orderBy('date', 'desc')
-      : db
-        .collection(`users/${auth().currentUser.uid}/records`)
-        .orderBy('date', 'desc');
+        ? db.collection(`users/${id}/records`).orderBy('date', 'desc')
+        : db
+            .collection(`users/${auth().currentUser.uid}/records`)
+            .orderBy('date', 'desc');
       unsubscribe3 = ref.onSnapshot(
         snapshot => {
           const userrecords = [];
@@ -130,20 +172,20 @@ export default function ProfileScreen(props) {
             if (data.url) {
               const artist = await data.artist.get();
               userrecords.push({
-                duration: data.duration,
                 id: doc.id,
+                viewedAmount: data.viewedAmount,
                 title: data.title,
                 artwork: data.artwork,
                 date: data.date.toDate(),
                 postRange: data.postRange,
-                materialRange: data.materialRange,
                 isComment: data.isComment,
                 genre: data.genre,
                 url: data.url,
                 artist: artist.data(),
                 tags: data.tags,
-                records: data.records,
                 playLists: data.playLists,
+                itemId: data.itemId,
+                amount: data.amount,
               });
               setRecords(userrecords);
               setLoading(false);
@@ -164,8 +206,8 @@ export default function ProfileScreen(props) {
     if (auth().currentUser) {
       const db = firestore();
       const ref = id
-      ? db.doc(`users/${id}`)
-      : db.doc(`users/${auth().currentUser.uid}`)
+        ? db.doc(`users/${id}`)
+        : db.doc(`users/${auth().currentUser.uid}`);
       ref.get().then(doc => {
         const data = doc.data();
         setProfile({
@@ -184,7 +226,9 @@ export default function ProfileScreen(props) {
     let unsubscribe2 = () => {};
     let unsubscribe3 = () => {};
     let unsubscribe4 = () => {};
+    let unsubscribe5 = () => {};
     const unsubscribe = auth().onAuthStateChanged(user => {
+      unsubscribe5 = sellfetch();
       unsubscribe2 = playlistfetch();
       userfetch();
       unsubscribe3 = postsfetch();
@@ -196,9 +240,10 @@ export default function ProfileScreen(props) {
         });
       }
     });
-      navigation.setOptions({
-        headerRight: () => (
-          (!id || id == auth().currentUser.uid) && <TouchableOpacity
+    navigation.setOptions({
+      headerRight: () =>
+        (!id || id == auth().currentUser.uid) && (
+          <TouchableOpacity
             onPress={() => {
               navigation.navigate('Setting');
             }}>
@@ -210,17 +255,18 @@ export default function ProfileScreen(props) {
             />
           </TouchableOpacity>
         ),
-      });
+    });
     return () => {
       unsubscribe2;
       unsubscribe;
       unsubscribe3;
       unsubscribe4;
+      unsubscribe5;
     };
   }, [navigation, id]);
   return (
     <ScrollView style={styles.container}>
-      <Profile profile={profile} id = {id}/>
+      <Profile profile={profile} id={id} />
       <Tab.Navigator
         sceneContainerStyle={{flex: 1}}
         tabBarOptions={{
@@ -229,16 +275,17 @@ export default function ProfileScreen(props) {
           inactiveTintColor: '#A7A7A7',
         }}>
         <Tab.Screen
-          name="投稿"
+          name="post"
           children={() => <ContentsList items={posts} />}
         />
         <Tab.Screen
-          name="レコード"
+          name="record"
           children={() => <RecordsList items={records} />}
         />
+        <Tab.Screen name="sell" children={() => <SellsList items={sells} />} />
         <Tab.Screen
-          name="プレイリスト"
-          children={() => <UserPlayList id = {id} playLists={playLists} />}
+          name="playlist"
+          children={() => <UserPlayList id={id} playLists={playLists} />}
         />
       </Tab.Navigator>
     </ScrollView>

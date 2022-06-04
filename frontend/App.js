@@ -1,22 +1,25 @@
 /* eslint-disable react-hooks/exhaustive-deps */
+/* eslint-disable react-hooks/exhaustive-deps */
 import React, {createContext, useEffect, useReducer, useRef} from 'react';
 import {
   createStackNavigator,
   CardStyleInterpolators,
 } from '@react-navigation/stack';
-import {NavigationContainer} from '@react-navigation/native';
+import {NavigationContainer, useNavigation} from '@react-navigation/native';
 import Orientation from 'react-native-orientation';
 import TrackPlayer from 'react-native-track-player';
 import {playerReducer, editorReducer} from './src/reducer';
-import {firebaseConfig} from './src/utils';
+import {firebaseConfig} from './utils/firebaseConfig';
 import auth from '@react-native-firebase/auth';
 import {Alert} from 'react-native';
+import {useMoralis} from 'react-moralis';
 
 import MainTabScreen from './src/screens/MainTabScreen';
-import RecordPlayerScreen from './src/screens/RecordPlayerScreen';
+import RecordSellScreen from './src/screens/RecordSellScreen';
 import RecordCreateScreen from './src/screens/RecordCreateScreen';
 import ProfileScreen from './src/screens/ProfileScreen';
 import RecordEditScreen from './src/screens/RecordEditScreen';
+import RecordSellPostScreen from './src/screens/RecordSellPostScreen';
 import RecordPostScreen from './src/screens/RecordPostScreen';
 import RecordAddScreen from './src/screens/RecordAddScreen';
 import SignUpScreen from './src/screens/SignUpScreen';
@@ -30,6 +33,7 @@ import firebase from '@react-native-firebase/app';
 import firestore from '@react-native-firebase/firestore';
 import analytics from '@react-native-firebase/analytics';
 import messaging from '@react-native-firebase/messaging';
+import LoginScreen from './Components/CryptoAuth';
 
 const Stack = createStackNavigator();
 
@@ -38,6 +42,9 @@ const InitialPlayerState = {
   items: [],
   index: -1,
   playerIsVisible: false,
+  pressNotification: null,
+  pressNotificationFollow: null,
+  pressNotificationSell: null,
 };
 const InitialEditorState = {
   start: 0,
@@ -46,6 +53,7 @@ const InitialEditorState = {
   records: [],
   duration: 10,
 };
+
 
 export const PlayerContext = createContext(InitialPlayerState);
 export const EditorContext = createContext(InitialEditorState);
@@ -56,14 +64,87 @@ if (firebase.apps.length === 0) {
 }
 
 export default function App() {
+  const {Moralis} = useMoralis();
+
+  useEffect(() => {
+    Moralis.User.currentAsync().then(function (user) {
+      console.log(user.attributes.accounts[0]);
+      Moralis.User.become(user.getSessionToken());
+    });
+  }, []);
+
   useEffect(() => {
     // Assume a message-notification contains a "type" property in the data payload of the screen to open
-
-    messaging().onNotificationOpenedApp(remoteMessage => {
+    messaging().onNotificationOpenedApp(async remoteMessage => {
       console.log(
         'Notification caused app to open from background state:',
         remoteMessage.notification,
       );
+      const {data} = remoteMessage;
+      switch (data.type) {
+        case 'like':
+          dispatch({
+            type: 'CONTENTSSELECT',
+            items: [JSON.parse(data.where)],
+            index: 0,
+          });
+          break;
+        case 'disLike':
+          dispatch({
+            type: 'CONTENTSSELECT',
+            items: [JSON.parse(data.where)],
+            index: 0,
+          });
+          break;
+        case 'comment': {
+          const where = JSON.parse(data.where);
+          const res = await firestore().doc(`posts/${where.itemId}`).get()
+          const post = {...res.data(), id: res.id};
+          const artist = await post.artist.get();
+          post.artist = artist.data();
+          post.date = post.date.toDate();
+          where.createdAt = where.createdAt.toDate();
+          dispatch({
+            type: 'PRESSNOTIFICATIONCOMMENT',
+            items: [post],
+            index: 0,
+            pressNotification: where,
+          });
+          break;
+        }
+        case 'reply': {
+          const where = JSON.parse(data.where);
+          firestore()
+            .doc(`posts/${where.itemId}`)
+            .get()
+            .then(res => {
+              const data = res.data();
+              data.artist.get().then((s) => {
+                const artist = s.data();
+                data.artist = artist;
+                dispatch({
+                  type: 'PRESSNOTIFICATIONCOMMENT',
+                  items: [post],
+                  index: 0,
+                  pressNotification: where,
+                });
+              })
+            });
+          break;
+        }
+        case 'follow':
+          dispatch({
+            type: 'PRESSNOTIFICATIONFOLLOW',
+            pressNotification: data.userId,
+          });
+          break;
+        case 'sell':
+          dispatch({
+            type: 'PRESSNOTIFICATIONSELL',
+            pressNotification: JSON.parse(data.where),
+          });
+          break;
+      }
     });
 
     // Check whether an initial notification is available
@@ -71,6 +152,67 @@ export default function App() {
       .getInitialNotification()
       .then(remoteMessage => {
         if (remoteMessage) {
+          const {data} = remoteMessage;
+          switch (data.type) {
+            case 'like':
+              dispatch({
+                type: 'CONTENTSSELECT',
+                items: [JSON.parse(data.where)],
+                index: 0,
+              });
+              break;
+            case 'disLike':
+              dispatch({
+                type: 'CONTENTSSELECT',
+                items: [JSON.parse(data.where)],
+                index: 0,
+              });
+              break;
+            case 'comment': {
+              const where = JSON.parse(data.where);
+              firestore()
+                .doc(`posts/${where.itemId}`)
+                .get()
+                .then(res => {
+                  const post = res.data();
+                  dispatch({
+                    type: 'PRESSNOTIFICATIONCOMMENT',
+                    items: [post],
+                    index: 0,
+                    pressNotification: where,
+                  });
+                });
+              break;
+            }
+            case 'reply': {
+              const where = JSON.parse(data.where);
+              firestore()
+                .doc(`posts/${where.itemId}`)
+                .get()
+                .then(res => {
+                  const post = res.data();
+                  dispatch({
+                    type: 'PRESSNOTIFICATIONCOMMENT',
+                    items: [post],
+                    index: 0,
+                    pressNotification: where,
+                  });
+                });
+              break;
+            }
+            case 'follow':
+              dispatch({
+                type: 'PRESSNOTIFICATIONFOLLOW',
+                pressNotification: data.userId,
+              });
+              break;
+            case 'sell':
+              dispatch({
+                type: 'PRESSNOTIFICATIONSELL',
+                pressNotification: JSON.parse(data.where),
+              });
+              break;
+          }
           console.log(
             'Notification caused app to open from quit state:',
             remoteMessage.notification,
@@ -92,15 +234,23 @@ export default function App() {
   const dispatchRecommends = items => {
     dispatch({type: 'RECOMMENDS', items});
   };
+  async function saveTokenToDatabase(token) {
+    // Assume user is already signed in
+    const userId = auth().currentUser.uid;
 
+    // Add the token to the users datastore
+    await firestore()
+      .collection('users')
+      .doc(userId)
+      .update({
+        tokens: firestore.FieldValue.arrayUnion(token),
+      });
+  }
   async function init() {
     const enabled = await messaging().hasPermission();
-    if (enabled) {
-      this.initFcm();
-    } else {
+    if (!enabled) {
       try {
         await messaging().requestPermission();
-        this.initFcm();
       } catch (e) {
         console.log(e);
       }
@@ -113,6 +263,11 @@ export default function App() {
     const unsubscribe = auth().onAuthStateChanged(user => {
       if (user) {
         analytics().setUserId(auth().currentUser.uid);
+        messaging()
+          .getToken()
+          .then(token => {
+            if(token)saveTokenToDatabase(token);
+          });
       }
       return unsubscribe;
     });
@@ -188,7 +343,6 @@ export default function App() {
   }, []);
 
   const [state, dispatch] = useReducer(playerReducer, InitialPlayerState);
-  const {item, likes} = state;
   const [editorState, editorDispatch] = useReducer(
     editorReducer,
     InitialEditorState,
@@ -205,8 +359,8 @@ export default function App() {
           }}
           onStateChange={async () => {
             const previousRouteName = routeNameRef.current;
-            const currentRouteName =
-              navigationRef.current.getCurrentRoute().name;
+            const currentRouteName = navigationRef.current.getCurrentRoute()
+              .name;
 
             if (previousRouteName !== currentRouteName) {
               await analytics().logScreenView({
@@ -231,14 +385,14 @@ export default function App() {
               }}
             />
             {/* <Stack.Screen
-              name="Player"
-              component={RecordPlayerScreen}
-              getId={({route}) => route && route.params}
-              options={{
-                headerShown: false,
-                cardStyleInterpolator: CardStyleInterpolators.forVerticalIOS,
-              }}
-            /> */}
+                name="Player"
+                component={RecordPlayerScreen}
+                getId={({route}) => route && route.params}
+                options={{
+                  headerShown: false,
+                  cardStyleInterpolator: CardStyleInterpolators.forVerticalIOS,
+                }}
+              /> */}
             <Stack.Screen
               name="RecordCreate"
               component={RecordCreateScreen}
@@ -254,6 +408,11 @@ export default function App() {
               }}
             />
             <Stack.Screen name="RecordEdit" component={RecordEditScreen} />
+            <Stack.Screen name="RecordSell" component={RecordSellScreen} />
+            <Stack.Screen
+              name="RecordSellPost"
+              component={RecordSellPostScreen}
+            />
             <Stack.Screen name="RecordPost" component={RecordPostScreen} />
             <Stack.Screen name="RecordAdd" component={RecordAddScreen} />
             <Stack.Screen
@@ -275,6 +434,7 @@ export default function App() {
             <Stack.Screen name="Password" component={PasswordScreen} />
             <Stack.Screen name="Done" component={PasswordDoneScreen} />
             <Stack.Screen name="Setting" component={SettingScreen} />
+            <Stack.Screen name="CryptoAuth" component={LoginScreen} />
             <Stack.Screen name="ProfileEdit" component={ProfileEditScreen} />
           </Stack.Navigator>
         </NavigationContainer>

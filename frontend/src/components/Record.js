@@ -1,4 +1,4 @@
-import React, { useContext, useEffect } from 'react';
+import React, {useContext, useEffect} from 'react';
 import {useNavigation} from '@react-navigation/native';
 import {
   StyleSheet,
@@ -12,22 +12,25 @@ import {
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import SoundPlayer from 'react-native-sound-player';
-import { PlayerContext } from '../../App';
-
+import {PlayerContext} from '../../App';
 
 export default function Record(props) {
-
   useEffect(() => {
     SoundPlayer.loadUrl(item?.url);
-  }, [])
+  }, []);
   const navigation = useNavigation();
   const {item, items} = props;
   const {dispatch} = useContext(PlayerContext);
   function renderTag({item}) {
-    return <TouchableOpacity onPress={() => {navigation.navigate('Tag', {item})}}>
-              <Text style={styles.tagTitle}>{item}</Text>
-          </TouchableOpacity>;}
-
+    return (
+      <TouchableOpacity
+        onPress={() => {
+          navigation.navigate('Tag', {item});
+        }}>
+        <Text style={styles.tagTitle}>{item}</Text>
+      </TouchableOpacity>
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -38,38 +41,36 @@ export default function Record(props) {
             SoundPlayer.play();
           }}>
           <Icon name="play" size={24} color="white" />
-       </TouchableOpacity>
-       <Image source={{uri: item?.artwork}} style={styles.image} />
+        </TouchableOpacity>
+        <Image source={{uri: item?.artwork}} style={styles.image} />
       </View>
       <Text style={styles.username}>{item?.title}</Text>
       <Text style={styles.id}>by {item?.artist?.name} </Text>
-      {item?.tags.length !==0 && (
+      {item?.tags.length !== 0 && (
         <FlatList
-        horizontal
-        scrollEnabled={false}
-        nestedScrollEnabled={true}
-        data={item.tags}
-        renderItem={renderTag}
-        keyExtractor={item => item.id}
-      />
-      ) }
+          horizontal
+          scrollEnabled={false}
+          nestedScrollEnabled={true}
+          data={item.tags}
+          renderItem={renderTag}
+          keyExtractor={item => item.id}
+        />
+      )}
       {item?.genre !== '' && (
         <View style={styles.description}>
           <Text>
-            <Text style={styles.descriptionText}>
-              {item?.genre}
-            </Text>
+            <Text style={styles.descriptionText}>{item?.genre}</Text>
           </Text>
         </View>
       )}
       <TouchableOpacity
         style={styles.play}
         onPress={() => {
-          console.log(items);
           dispatch({type: 'CONTENTSSELECT', items, index: 0});
         }}>
         <Icon name="play" size={48} color="white" />
       </TouchableOpacity>
+      <Text style={styles.amount}>流通量：{item.amount}</Text>
     </View>
   );
 }
@@ -86,6 +87,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   image: {
+    width: 96,
+    height: 96,
+    marginBottom: 24,
+    borderRadius: 48,
+  },
+  amount: {
+    marginTop: 24,
+  },
+  nftImage: {
     width: 96,
     height: 96,
     marginBottom: 24,

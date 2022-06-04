@@ -5,6 +5,9 @@ import firebase from '@react-native-firebase/app';
 
 export default function SettingScreen(props) {
   const {navigation} = props;
+  const cryptoAuth = () => {
+    navigation.navigate('CryptoAuth');
+  }
   const logout = () => {
     firebase
       .auth()
@@ -24,6 +27,11 @@ export default function SettingScreen(props) {
       <ListItem onPress={logout}>
         <ListItem.Content>
           <ListItem.Title>ログアウト</ListItem.Title>
+        </ListItem.Content>
+      </ListItem>
+      <ListItem onPress={cryptoAuth}>
+        <ListItem.Content>
+          <ListItem.Title>ウォレット連携</ListItem.Title>
         </ListItem.Content>
       </ListItem>
     </ScrollView>

@@ -13,6 +13,7 @@ import {
   Animated,
   Dimensions,
   ImageBackground,
+  Alert,
 } from "react-native";
 import {
   Button,
@@ -33,6 +34,8 @@ import LottieView from "lottie-react-native";
 
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import Animation from "../splashLottie.json";
+import firestore from "@react-native-firebase/firestore"
+import auth from "@react-native-firebase/auth"
 
 // import Loader from './Components/Loader';
 const windowWidth = Dimensions.get("window").width;
@@ -49,6 +52,7 @@ const LoginScreen = ({ navigation }) => {
     Moralis,
   } = useMoralis();
 
+  const [user, setUser] = useState(false);
   const [userEmail, setUserEmail] = useState("");
   const [userPassword, setUserPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -68,17 +72,35 @@ const LoginScreen = ({ navigation }) => {
           setErrortext(authError.message);
           setVisible(true);
         } else {
-          if (isAuthenticated) {
-            navigation.replace("DrawerNavigationRoutes");
-          }
+            navigation.reset({
+              index: 0,
+              routes: [{name: 'Main'}],
+            });
+        }
+      })
+      .catch(() => {});
+  };
+  const handleCryptoLogout = () => {
+    logout()
+      .then(() => {
+        if (authError) {
+          setErrortext(authError.message);
+          setVisible(true);
+        } else {
+          Alert.alert('連携が解除されました！');
         }
       })
       .catch(() => {});
   };
 
   useEffect(() => {
-    isAuthenticated && navigation.replace("DrawerNavigationRoutes");
-  }, [isAuthenticated]);
+    Moralis.User.currentAsync().then(function(user) {
+      setUser(user);
+      user
+      ? firestore().doc(`users/${auth().currentUser.uid}`).update({crypto: user.attributes})
+      : firestore().doc(`users/${auth().currentUser.uid}`).update({crypto: null});
+    });
+  }, [Moralis.User.currentAsync()]);
 
   return (
     <Provider>
@@ -129,13 +151,20 @@ const LoginScreen = ({ navigation }) => {
                   <ActivityIndicator animating={true} color={"white"} />
                 )}
               </View>
-
-              <TouchableOpacity
+              {user
+              ?(<TouchableOpacity
+                style={styles.buttonStyle}
+                activeOpacity={0.5}
+                onPress={handleCryptoLogout}>
+                <Text style={styles.buttonTextStyle}>Crypto Wallet Logout</Text>
+              </TouchableOpacity>)
+              :(<TouchableOpacity
                 style={styles.buttonStyle}
                 activeOpacity={0.5}
                 onPress={handleCryptoLogin}>
                 <Text style={styles.buttonTextStyle}>Crypto Wallet Login</Text>
-              </TouchableOpacity>
+              </TouchableOpacity>)
+              }
               <Text
                 style={styles.registerTextStyle}
                 onPress={() =>

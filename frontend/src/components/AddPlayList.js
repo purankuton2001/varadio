@@ -87,17 +87,17 @@ export default function AddPlayList(props) {
   const overlayPress = () => {
     checked.forEach(id => {
       const ref = firestore()
-      .collection(`users/${auth().currentUser.uid}/playLists`)
-      .doc(id);
-    ref
-      .update({
-        posts: firestore.FieldValue.arrayUnion(item.id),
-      })
-      .then(() => {
-        changeVisible(!visible);
-        setChecked([]);
-      });
-    })
+        .collection(`users/${auth().currentUser.uid}/playLists`)
+        .doc(id);
+      ref
+        .update({
+          posts: firestore.FieldValue.arrayUnion(item.id),
+        })
+        .then(() => {
+          changeVisible(!visible);
+          setChecked([]);
+        });
+    });
   };
 
   return (

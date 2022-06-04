@@ -10,17 +10,18 @@ import {
   Alert,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
-import { PlayerContext } from '../../App';
+import {PlayerContext} from '../../App';
 
 export default function Tag(props) {
   const {dispatch} = useContext(PlayerContext);
   const navigation = useNavigation();
   const {item, items} = props;
+  console.log(item);
 
   return (
     <View style={styles.container}>
       <Image source={{uri: item.artwork}} style={styles.image} />
-      <Text style={styles.username}>{item.id}</Text>
+      <Text style={styles.username}>{item.title}</Text>
       <TouchableOpacity
         style={styles.play}
         onPress={() => {

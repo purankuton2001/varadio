@@ -1,4 +1,5 @@
 import React from 'react';
+
 import {MoralisProvider} from 'react-moralis';
 import Moralis from 'moralis/react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -21,11 +22,16 @@ interface ProvidersProps {
   readonly children: JSX.Element;
 }
 
+
 /**
  * Initialization of Moralis
  */
 const appId = REACT_APP_MORALIS_APPLICATION_ID;
 const serverUrl = REACT_APP_MORALIS_SERVER_URL;
+
+Moralis.initialize(appId);
+Moralis.serverURL = serverUrl;
+
 const environment = 'native';
 // Initialize Moralis with AsyncStorage to support react-native storage
 Moralis.setAsyncStorage(AsyncStorage);
@@ -52,6 +58,8 @@ const walletConnectOptions: WalletConnectProviderProps = {
   // Uncomment to show a QR-code to connect a wallet
   //renderQrcodeModal: Qrcode,
 };
+
+
 
 export const Providers = ({children}: ProvidersProps) => {
   return (

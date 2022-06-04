@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import {dateToString} from '../utils';
-import auth from '@react-native-firebase/auth'
+import auth from '@react-native-firebase/auth';
 
 export default function UserPlayList(props) {
   const navigation = useNavigation();
@@ -29,10 +29,6 @@ export default function UserPlayList(props) {
           <Text style={styles.infoText}>{item.artist.name}</Text>
           <View style={styles.infoContainer}>
             <View style={styles.infoValue}>
-              <Icon name="play" size={16} />
-              <Text style={styles.infoText}>3000回</Text>
-            </View>
-            <View style={styles.infoValue}>
               <Icon name="clock-outline" size={16} />
               <Text style={styles.infoText}>{dateToString(item.date)}</Text>
             </View>
@@ -43,24 +39,26 @@ export default function UserPlayList(props) {
   }
   return (
     <View style={styles.container}>
-      {(!id || id == auth().currentUser.uid)&& (
-      <TouchableOpacity
-        style={styles.create}
-        onPress={() => {
-          navigation.navigate('PlayListCreate');
-        }}>
-        <Icon name="plus" size={72} style={{marginRight: 16}} />
-        <Text style={styles.createText}>新しいプレイリストを作成</Text>
-      </TouchableOpacity>)}
-      {(!id || id == auth().currentUser.uid)&& (
-      <TouchableOpacity
-        style={styles.create}
-        onPress={() => {
-          navigation.navigate('Viewed');
-        }}>
-        <Icon name="history" size={72} style={{marginRight: 16}} />
-        <Text style={styles.createText}>視聴履歴</Text>
-      </TouchableOpacity>)}
+      {(!id || id == auth().currentUser.uid) && (
+        <TouchableOpacity
+          style={styles.create}
+          onPress={() => {
+            navigation.navigate('PlayListCreate');
+          }}>
+          <Icon name="plus" size={72} style={{marginRight: 16}} />
+          <Text style={styles.createText}>新しいプレイリストを作成</Text>
+        </TouchableOpacity>
+      )}
+      {(!id || id == auth().currentUser.uid) && (
+        <TouchableOpacity
+          style={styles.create}
+          onPress={() => {
+            navigation.navigate('Viewed');
+          }}>
+          <Icon name="history" size={72} style={{marginRight: 16}} />
+          <Text style={styles.createText}>視聴履歴</Text>
+        </TouchableOpacity>
+      )}
       <TouchableOpacity
         style={styles.create}
         onPress={() => {

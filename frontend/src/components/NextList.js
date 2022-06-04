@@ -1,4 +1,4 @@
-import React, {useContext, useState, useEffect} from 'react';
+import React, {useContext, useState, useEffect, useCallback} from 'react';
 import {
   StyleSheet,
   View,
@@ -9,7 +9,7 @@ import {
   Alert,
   Keyboard,
 } from 'react-native';
-import {BottomSheet, Input, Overlay} from 'react-native-elements';
+import {BottomSheet} from 'react-native-elements';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import AddPlayList from './AddPlayList';
 import {PlayerContext} from '../../App';
@@ -20,7 +20,7 @@ import {useMoralisDapp} from '../../providers/MoralisDappProvider/MoralisDappPro
 import {useWalletConnect} from '../../WalletConnect';
 import firestore from '@react-native-firebase/firestore';
 
-export default function ContentsList({items}) {
+export default function NextList({items, idx}) {
   useEffect(() => {
     Keyboard.addListener('keyboardDidShow', _keyboardDidShow);
     Keyboard.addListener('keyboardDidHide', _keyboardDidHide);
@@ -49,21 +49,9 @@ export default function ContentsList({items}) {
   } = useMoralis();
   const connector = useWalletConnect();
   const {dispatch} = useContext(PlayerContext);
-  const [overlayVisible, setOverlayVisible] = useState(false);
-  const [isVisible, setIsVisible] = useState(false);
   const [visible, setVisible] = useState(false);
-  const [report, setReport] = useState('');
+  const [isVisible, setIsVisible] = useState(false);
   const [it, setIt] = useState();
-
-  const overlaypress = async () => {
-    await firestore().collection(`report`).add({itemId: it?.id, report});
-    setOverlayVisible(false);
-    setIsVisible(false)
-    setReport('');
-  };
-  const postReport = () => {
-    setOverlayVisible(true);
-  };
 
   const postDelete = async () => {
     console.log(it.postId);
@@ -77,7 +65,7 @@ export default function ContentsList({items}) {
       },
       [Number(it.postId)],
     );
-    const transactionId = await connector.sendTransaction({
+    transactionId = await connector.sendTransaction({
       data,
       from: connector.accounts[0],
       to: marketAddress,
@@ -101,15 +89,27 @@ export default function ContentsList({items}) {
   };
 
   function renderItem({item, index}) {
+    const opacity = index < idx ? 0.2 : 1;
     return (
       <TouchableOpacity
-        style={styles.item}
+        style={[styles.item, {opacity}]}
         onPress={() => {
           dispatch({type: 'CONTENTSSELECT', items, index});
         }}>
-        <Image source={{uri: item.artwork}} style={styles.image} />
+        <Image
+          source={{uri: item.artwork}}
+          style={[
+            styles.image,
+            {
+              borderWidth: idx === index ? 3 : 0,
+            },
+          ]}
+        />
         <View style={styles.description}>
-          <Text style={styles.title}>{item.title}</Text>
+          <View style={styles.titleContainer}>
+            <Text style={styles.titleText}>{item.title}</Text>
+            {idx === index && <Text style={styles.titlePlaying}>再生中</Text>}
+          </View>
           <Text style={styles.infoText}>{item.artist.name}</Text>
           <View style={styles.infoContainer}>
             <View style={styles.infoValue}>
@@ -137,33 +137,10 @@ export default function ContentsList({items}) {
     <View style={[styles.container, {paddingBottom: keyboardStatus ? 0 : 80}]}>
       <FlatList
         data={items}
-        renderItem={renderItem}
-        keyExtractor={item => item.id}
+        renderItem={useCallback(renderItem, [idx])}
+        keyExtractor={useCallback(item => item.id, [idx])}
       />
       <AddPlayList changeVisible={changeVisible} visible={visible} item={it} />
-      <Overlay isVisible={overlayVisible} style={styles.overlayContainer}>
-        <View style={styles.overlayInput}>
-          <Text style={styles.overlayInputTitle}>通報</Text>
-          <Input
-              placeholder="Report"
-              containerStyle={styles.overlayInputContainer}
-              inputStyle={styles.overlayInputText}
-              multiline
-              value={report}
-              onChangeText={e => {
-                setReport(e);
-              }}
-          />
-        </View>
-        <View style={styles.overlayEmmit}>
-          <TouchableOpacity style={styles.overlayButton} onPress={() => {setOverlayVisible(false)}}>
-            <Text style={styles.overlayButtonText}>キャンセル</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.overlayButton} onPress={overlaypress}>
-            <Text style={styles.overlayButtonText}>送信</Text>
-          </TouchableOpacity>
-        </View>
-      </Overlay>
       <BottomSheet
         isVisible={isVisible}
         containerStyle={{
@@ -176,15 +153,11 @@ export default function ContentsList({items}) {
           }}>
           <Text style={styles.bottomText}>プレイリストに追加</Text>
         </TouchableOpacity>
-        {auth().currentUser?.uid === it?.artist.id　? (
+        {auth().currentUser?.uid === it?.artist.id && (
           <TouchableOpacity style={styles.bottomBotton} onPress={postDelete}>
             <Text style={[styles.bottomText, {color: 'red'}]}>削除</Text>
           </TouchableOpacity>
-        ):(
-        <TouchableOpacity style={styles.bottomBotton} onPress={postReport}>
-          <Text style={[styles.bottomText, {color: 'red'}]}>通報</Text>
-        </TouchableOpacity>)
-        }
+        )}
         <TouchableOpacity
           style={styles.bottomBotton}
           onPress={() => {
@@ -236,48 +209,30 @@ const styles = StyleSheet.create({
     width: 72,
     height: 72,
     marginRight: 16,
+    borderColor: '#FFA800',
   },
   description: {
     flex: 1,
     justifyContent: 'center',
   },
-  title: {
+  titleText: {
     fontSize: 16,
     fontWeight: 'bold',
     height: 24,
     color: 'black',
     marginBottom: 8,
+    marginRight: 4,
+  },
+  titlePlaying: {
+    fontWeight: 'bold',
+    color: '#FFA800',
+  },
+  titleContainer: {
+    flexDirection: 'row',
   },
   infoContainer: {
     flexDirection: 'row',
     height: 16,
-  },
-  overlayInputContainer: {
-    height: 96,
-  },
-  overlayInputText: {
-    height: 96,
-    fontSize: 18,
-  },
-  overlayInputTitle: {
-    marginLeft: 12,
-    fontSize: 20,
-    fontWeight: 'bold',
-  },
-  overlayInput: {
-    marginBottom: 24,
-  },
-  overlayEmmit:{
-    flexDirection: 'row',
-    width: '80%',
-  },
-  overlayButton: {
-    paddingVertical: 8,
-    alignItems: 'center',
-    flex: 0.5,
-  },
-  overlayButtonText: {
-    alignItems: 'center',
   },
   infoText: {
     color: 'black',
@@ -298,6 +253,18 @@ const styles = StyleSheet.create({
   overlay: {
     width: '80%',
     height: '60%',
+  },
+  bottomBotton: {
+    flexDirection: 'row',
+    backgroundColor: 'white',
+    height: 56,
+    alignItems: 'center',
+  },
+  bottomText: {
+    height: 24,
+    fontSize: 18,
+    justifyContent: 'center',
+    marginLeft: 4,
   },
   buttonText: {
     padding: 8,
